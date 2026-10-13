@@ -1,0 +1,238 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Kigali Heights Residence — design tokens
+   ============================================================ */
+@theme inline {
+  --color-ivory: #f7f4ee;
+  --color-canvas: #fbf9f5;
+  --color-charcoal: #222522;
+  --color-ink: #161815;
+  --color-bronze: #a8875a;
+  --color-bronze-soft: #c3a97e;
+  --color-stone: #dcd4c8;
+  --color-sage: #747c6b;
+  --color-sage-soft: #9aa292;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-cormorant), ui-serif, Georgia, "Times New Roman",
+    serif;
+
+  --tracking-eyebrow: 0.26em;
+
+  --shadow-card: 0 1px 2px rgba(34, 37, 34, 0.04),
+    0 12px 32px -18px rgba(34, 37, 34, 0.28);
+  --shadow-lift: 0 2px 4px rgba(34, 37, 34, 0.05),
+    0 26px 50px -24px rgba(34, 37, 34, 0.34);
+
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-ivory);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: normal;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-bronze);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-bronze);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  blockquote {
+    font-family: var(--font-display);
+    font-weight: 400;
+    color: var(--color-charcoal);
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  /* Number inputs stay tidy */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* ============================================================
+   Reusable composition classes
+   ============================================================ */
+@layer components {
+  .shell {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 1440px;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .shell {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .shell {
+      padding-inline: 3.5rem;
+    }
+  }
+
+  .shell-narrow {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 940px;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .shell-narrow {
+      padding-inline: 2rem;
+    }
+  }
+
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--color-bronze);
+  }
+
+  .rule {
+    height: 1px;
+    width: 100%;
+    background-color: color-mix(in srgb, var(--color-stone) 80%, transparent);
+  }
+
+  /* Image frame with a slow, restrained zoom on hover */
+  .frame {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-stone);
+  }
+
+  .frame img {
+    transition: transform 900ms var(--ease-editorial);
+  }
+
+  .frame-zoom:hover img,
+  .frame-zoom:focus-visible img {
+    transform: scale(1.045);
+  }
+
+  .text-balance-tight {
+    text-wrap: balance;
+  }
+}
+
+/* ============================================================
+   Entrance motion (opt-in, respects reduced motion)
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 750ms var(--ease-editorial),
+      transform 750ms var(--ease-editorial);
+    will-change: opacity, transform;
+  }
+
+  .reveal[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .fade-in {
+    animation: khr-fade 800ms var(--ease-editorial) both;
+  }
+
+  .rise-in {
+    animation: khr-rise 900ms var(--ease-editorial) both;
+  }
+
+  .panel-in {
+    animation: khr-panel 420ms var(--ease-editorial) both;
+  }
+}
+
+@keyframes khr-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes khr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes khr-panel {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes khr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: khr-spin 900ms linear infinite;
+}
+
+/* Utility for hiding scrollbars on horizontal filter rails */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

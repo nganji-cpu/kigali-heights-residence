@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kigali Heights Residence monogram">
+  <rect width="64" height="64" fill="#222522" />
+  <rect x="6.5" y="6.5" width="51" height="51" fill="none" stroke="#A8875A" stroke-width="1" />
+  <text
+    x="32"
+    y="41"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="26"
+    letter-spacing="1"
+    fill="#F7F4EE"
+  >
+    KH
+  </text>
+</svg>
