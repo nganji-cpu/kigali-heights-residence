@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Discover Kigali",
   description:
-    "Impressions of Kigali and Rwanda for the fictional Kigali Heights Residence concept the city, art and culture, food, nature escapes and business travel.",
+    "Impressions of Kigali and Rwanda for a stay at Kigali Heights Residence: the city, art and culture, food, nature escapes and business travel.",
 };
 
 export default function DiscoverPage() {
@@ -18,12 +18,8 @@ export default function DiscoverPage() {
     <>
       <PageHeader
         eyebrow="Kigali & Rwanda"
-        title={
-          <>
-            A city of hills, and a country <em className="italic text-bronze">close</em> at hand.
-          </>
-        }
-        description="General impressions to help a guest plan their days the city, its creative scene, its food, and the escapes that sit within a couple of hours of the residence. Nothing here is a recommendation of a specific venue."
+        title="A city of hills, and a country close at hand."
+        description="General impressions to help a guest plan their days: the city, its creative scene, its food, and the escapes within reach of Kigali. Nothing here is a recommendation of a specific venue."
         image={{
           src: "/images/kigali-hills.jpg",
           alt: "Green hills of Kigali seen from a viewpoint",
@@ -93,10 +89,10 @@ export default function DiscoverPage() {
           <ConceptNotice tone="light" className="max-w-3xl" />
           <div className="flex flex-wrap items-center gap-3">
             <ButtonLink href="/book" size="lg">
-              Plan your stay
+              Reserve a stay
             </ButtonLink>
             <ButtonLink href="/services" variant="secondary" size="lg">
-              Arrange a city tour
+              See guest services
             </ButtonLink>
           </div>
         </div>

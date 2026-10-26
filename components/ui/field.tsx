@@ -7,7 +7,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 const controlBase =
-  "w-full border border-stone/90 bg-white px-4 py-3 text-[0.95rem] text-charcoal transition-colors duration-200 placeholder:text-charcoal/35 hover:border-stone focus:border-bronze focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-stone/25 disabled:text-charcoal/50";
+  "w-full border border-stone/90 bg-white px-4 py-3 text-[0.95rem] text-charcoal transition-colors duration-200 placeholder:text-charcoal/65 hover:border-stone focus:border-bronze focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-stone/25 disabled:text-charcoal/70";
 
 const controlError = "border-red-500/70 focus:border-red-500";
 
@@ -35,14 +35,14 @@ export function Field({
     <div className={cn("flex flex-col gap-2", className)}>
       <label
         htmlFor={id}
-        className="flex items-baseline justify-between gap-3 text-[0.72rem] font-medium uppercase tracking-[0.18em] text-charcoal/70"
+        className="flex items-baseline justify-between gap-3 text-[0.72rem] font-medium tracking-[0.01em] text-charcoal/70"
       >
         <span>
           {label}
           {required ? <span aria-hidden="true"> *</span> : null}
         </span>
         {hint ? (
-          <span className="text-[0.68rem] font-normal normal-case tracking-normal text-charcoal/45">
+          <span className="text-[0.68rem] font-normal normal-case tracking-normal text-charcoal/70">
             {hint}
           </span>
         ) : null}

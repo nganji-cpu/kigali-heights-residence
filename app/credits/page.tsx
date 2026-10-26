@@ -10,7 +10,7 @@ import { creditLicenses, imageCredits } from "@/data/credits";
 export const metadata: Metadata = {
   title: "Image credits",
   description:
-    "Licence attributions for the Wikimedia Commons photography used in the fictional Kigali Heights Residence concept prototype.",
+    "Licence attributions for the Wikimedia Commons photography used in the Kigali Heights Residence design concept.",
 };
 
 export default function CreditsPage() {
@@ -18,12 +18,8 @@ export default function CreditsPage() {
     <>
       <PageHeader
         eyebrow="Credits"
-        title={
-          <>
-            Photography <em className="italic text-bronze">attributions</em>.
-          </>
-        }
-        description="Every photograph in this prototype is a licensed placeholder sourced from Wikimedia Commons and used under the licence shown. The images illustrate the concept only; none of them depict a real Kigali Heights Residence."
+        title="Photography attributions."
+        description="Every photograph in this project is licensed stock imagery from Wikimedia Commons and is used under the licence shown. The images illustrate the concept only; none of them depict a real Kigali Heights Residence."
       >
         <ButtonLink href="/images/ATTRIBUTIONS.md" variant="secondary">
           Open the plain-text list
@@ -45,7 +41,7 @@ export default function CreditsPage() {
               {creditLicenses.map((license) => (
                 <li
                   key={license}
-                  className="border border-stone/90 px-3 py-1.5 text-[0.72rem] uppercase tracking-[0.14em] text-charcoal/70"
+                  className="border border-stone/90 px-3 py-1.5 text-[0.72rem] tracking-[0.01em] text-charcoal/70"
                 >
                   {license}
                 </li>
@@ -72,16 +68,16 @@ export default function CreditsPage() {
                   <p className="line-clamp-2 text-[0.85rem] leading-snug text-charcoal">
                     {credit.title}
                   </p>
-                  <p className="text-[0.75rem] text-charcoal/60">{credit.author}</p>
+                  <p className="text-[0.75rem] text-charcoal/70">{credit.author}</p>
                   <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="text-[0.68rem] uppercase tracking-[0.14em] text-bronze">
+                    <span className="text-[0.68rem] tracking-[0.01em] text-bronze">
                       {credit.license}
                     </span>
                     <Link
                       href={credit.source}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="group inline-flex items-center gap-1 text-[0.72rem] text-charcoal/60 underline-offset-4 hover:text-bronze hover:underline"
+                      className="group inline-flex items-center gap-1 text-[0.72rem] text-charcoal/70 underline-offset-4 hover:text-bronze hover:underline"
                     >
                       Source
                       <ExternalLink

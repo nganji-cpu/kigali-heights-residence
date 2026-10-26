@@ -1,7 +1,7 @@
 import type { Room, RoomCategory } from "@/types";
 
 /**
- * Fictional accommodation inventory for the concept prototype.
+ * Illustrative apartment inventory for the design concept.
  *
  * Prices are illustrative nightly estimates in USD and are not real tariffs.
  * To add a room, append an object here — every page reads from this single
@@ -218,8 +218,8 @@ export interface CategoryMeta {
 export const roomCategories: CategoryMeta[] = [
   {
     value: "all",
-    label: "All accommodation",
-    blurb: "Every apartment and suite in the concept residence.",
+    label: "All apartments",
+    blurb: "Every apartment and suite in the residence.",
   },
   {
     value: "standard",

@@ -37,7 +37,7 @@ function SceneLoading() {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-ivory/70">
       <Loader2 aria-hidden="true" className="size-5 spinner" />
-      <p className="text-[0.7rem] uppercase tracking-[0.22em]">Loading 3D scene</p>
+      <p className="text-[0.7rem] tracking-[0.01em]">Preparing the view</p>
     </div>
   );
 }
@@ -96,13 +96,13 @@ export function SplineStatus({ className }: { className?: string }) {
   return (
     <p
       className={cn(
-        "inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.18em]",
+        "inline-flex items-center gap-2 text-[0.68rem] tracking-[0.01em]",
         connected ? "text-sage-soft" : "text-ivory/55",
         className,
       )}
     >
       <Boxes aria-hidden="true" className="size-3.5" />
-      {connected ? "Interactive Spline scene connected" : "3D preview Spline scene not yet connected"}
+      {connected ? "Interactive 3D view" : "Architectural illustration"}
     </p>
   );
 }

@@ -1,7 +1,7 @@
 /**
- * Shared domain types for the Kigali Heights Residence concept prototype.
+ * Shared domain types for the Kigali Heights Residence design concept.
  *
- * Everything here describes *fictional sample content*. Prices are illustrative
+ * Everything here describes illustrative content. Prices are illustrative
  * estimates in US dollars and do not represent real availability or tariffs.
  */
 
@@ -122,3 +122,87 @@ export type BookingFormErrors = Partial<
     string
   >
 >;
+
+/* ------------------------------------------------------------------------- */
+/* Backend / API types                                                       */
+/* ------------------------------------------------------------------------- */
+
+/** Input accepted by POST /api/bookings. Totals are never supplied by the client. */
+export interface CreateBookingInput {
+  roomSlug: string;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  requests: string;
+  serviceSlugs: string[];
+}
+
+export type BookingStatus = "confirmed" | "cancelled";
+export type BookingServiceStatus = "confirmed" | "requested" | "cancelled";
+
+export interface BookingRoomSummary {
+  slug: string;
+  name: string;
+  category: RoomCategory;
+  floor: LevelNumber;
+  pricePerNight: number;
+}
+
+export interface BookingServiceSummary {
+  slug: string;
+  name: string;
+  pricingType: PricingType;
+  amount: number;
+  status: BookingServiceStatus;
+}
+
+/** A booking exactly as stored, with server-calculated totals. */
+export interface BookingRecord {
+  reference: string;
+  status: BookingStatus;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  guests: number;
+  guest: {
+    name: string;
+    email: string;
+    phone: string;
+    requests: string;
+  };
+  room: BookingRoomSummary;
+  services: BookingServiceSummary[];
+  price: PriceBreakdown;
+  createdAt: string;
+}
+
+export interface RoomMetaResponse {
+  categories: { value: RoomCategory; label: string; blurb: string }[];
+  amenities: string[];
+  levels: { level: LevelNumber; rooms: number }[];
+}
+
+/** Public list shape for GET /api/bookings (no contact details). */
+export interface BookingSummary {
+  reference: string;
+  status: BookingStatus;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  guests: number;
+  room: BookingRoomSummary;
+  total: number;
+  createdAt: string;
+}
+
+export interface ApiErrorBody {
+  error: {
+    message: string;
+    code: string;
+    /** Optional per-field messages, keyed by form field name. */
+    fields?: Record<string, string>;
+  };
+}

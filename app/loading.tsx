@@ -5,7 +5,7 @@ export default function Loading() {
         aria-hidden="true"
         className="size-8 rounded-full border-2 border-stone border-t-bronze spinner"
       />
-      <p role="status" className="text-[0.72rem] uppercase tracking-[0.22em] text-charcoal/50">
+      <p role="status" className="text-[0.72rem] tracking-[0.01em] text-charcoal/70">
         Loading
       </p>
     </div>

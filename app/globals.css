@@ -4,27 +4,27 @@
    Kigali Heights Residence — design tokens
    ============================================================ */
 @theme inline {
-  --color-ivory: #f7f4ee;
-  --color-canvas: #fbf9f5;
-  --color-charcoal: #222522;
-  --color-ink: #161815;
-  --color-bronze: #a8875a;
-  --color-bronze-soft: #c3a97e;
-  --color-stone: #dcd4c8;
-  --color-sage: #747c6b;
-  --color-sage-soft: #9aa292;
+  --color-ivory: #f2eee6;
+  --color-canvas: #f8f5ef;
+  --color-charcoal: #24251f;
+  --color-ink: #151611;
+  --color-bronze: #a4573a;
+  --color-bronze-soft: #c17a5c;
+  --color-stone: #d7cec0;
+  --color-sage: #5f6c58;
+  --color-sage-soft: #929d89;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: var(--font-cormorant), ui-serif, Georgia, "Times New Roman",
+  --font-display: var(--font-newsreader), ui-serif, Georgia, "Times New Roman",
     serif;
 
-  --tracking-eyebrow: 0.26em;
+  --tracking-eyebrow: 0.04em;
 
-  --shadow-card: 0 1px 2px rgba(34, 37, 34, 0.04),
-    0 12px 32px -18px rgba(34, 37, 34, 0.28);
-  --shadow-lift: 0 2px 4px rgba(34, 37, 34, 0.05),
-    0 26px 50px -24px rgba(34, 37, 34, 0.34);
+  --shadow-card: 0 1px 2px rgba(34, 37, 34, 0.03),
+    0 12px 32px -18px rgba(34, 37, 34, 0.2);
+  --shadow-lift: 0 2px 4px rgba(34, 37, 34, 0.04),
+    0 26px 50px -24px rgba(34, 37, 34, 0.26);
 
   --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -35,7 +35,14 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
     -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   body {
@@ -65,6 +72,8 @@
   blockquote {
     font-family: var(--font-display);
     font-weight: 400;
+    font-optical-sizing: auto;
+    letter-spacing: -0.012em;
     color: var(--color-charcoal);
   }
 
@@ -120,12 +129,24 @@
   }
 
   .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
     font-family: var(--font-sans);
-    font-size: 0.6875rem;
+    font-size: 0.72rem;
     font-weight: 500;
     letter-spacing: var(--tracking-eyebrow);
-    text-transform: uppercase;
-    color: var(--color-bronze);
+    text-transform: none;
+    color: color-mix(in srgb, var(--color-charcoal) 70%, transparent);
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 1.5rem;
+    height: 1px;
+    flex: none;
+    background-color: currentColor;
+    opacity: 0.65;
   }
 
   .rule {

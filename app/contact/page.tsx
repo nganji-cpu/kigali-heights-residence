@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Clock, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
 import { ConceptNotice } from "@/components/layout/concept-notice";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContactForm } from "@/components/contact/contact-form";
@@ -10,56 +9,29 @@ import { siteConfig } from "@/data/site";
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Contact the fictional Kigali Heights Residence concept  a demonstration form and concept-only contact details for a design study.",
+    "Send a question about Kigali Heights Residence, a design concept for apartment living in Kigali, Rwanda.",
 };
 
 const faqs = [
   {
     question: "Is this a real hotel I can book?",
     answer:
-      "No. Kigali Heights Residence is a fictional concept created as a design and development study. Nothing shown here represents a real property, real availability or a real reservation.",
+      "No. Kigali Heights Residence is a design concept, not an operating property. Nothing shown here represents real availability or a real reservation.",
   },
   {
     question: "Can I use these prices?",
     answer:
-      "The prices are illustrative estimates used to demonstrate how a reservation summary might work. They are not tariffs and should not be relied on.",
+      "The rates are illustrative estimates for the concept. They are not tariffs and should not be relied on.",
   },
   {
-    question: "What happens if I submit the form?",
+    question: "What happens when I send a message?",
     answer:
-      "Nothing is sent anywhere. The form validates your input locally and shows a confirmation so the interaction can be reviewed  no message leaves the browser.",
+      "The message is saved as part of this project. There is no live team monitoring the inbox, so a reply is not guaranteed and no booking is created.",
   },
   {
-    question: "Can a Spline 3D scene be added?",
+    question: "Why is the ALU tour on the Explore page?",
     answer:
-      "Yes. The Explore page viewer is built to accept a Spline scene URL through an environment variable; until one is configured it shows a designed architectural illustration instead.",
-  },
-];
-
-const contactItems = [
-  {
-    icon: MapPin,
-    label: "Location",
-    value: `${siteConfig.location.district}, ${siteConfig.location.city}, ${siteConfig.location.country}`,
-    note: siteConfig.location.addressLine,
-  },
-  {
-    icon: Phone,
-    label: "Telephone",
-    value: siteConfig.contact.phone,
-    note: siteConfig.contact.phoneNote,
-  },
-  {
-    icon: Mail,
-    label: "Email",
-    value: siteConfig.contact.email,
-    note: siteConfig.contact.emailNote,
-  },
-  {
-    icon: Clock,
-    label: "Concierge hours",
-    value: siteConfig.contact.hours,
-    note: "Illustrative — the property is not operating.",
+      "It is the public ALU Kigali360 campus tour, included as a reference for how an immersive walkthrough could feel. It is not Kigali Heights Residence and does not show these apartments.",
   },
 ];
 
@@ -68,20 +40,16 @@ export default function ContactPage() {
     <>
       <PageHeader
         eyebrow="Contact"
-        title={
-          <>
-            Questions, group stays and <em className="italic text-bronze">long assignments</em>.
-          </>
-        }
-        description="Use the form for anything from a single reservation question to a relocation enquiry. Everything on this page is part of a demonstration, so replies are simulated rather than sent."
+        title="Questions about the residence."
+        description="For anything from a single apartment question to a longer stay, send a note. This is a design concept, so messages are saved as part of the project rather than answered by a live team."
         image={{
           src: "/images/coffee-shop.jpg",
           alt: "A calm coffee bar interior where guests might meet",
         }}
       >
-        <ButtonLink href="/book">Start a reservation</ButtonLink>
-        <ButtonLink href="/services" variant="secondary">
-          Browse guest services
+        <ButtonLink href="/book">Reserve a stay</ButtonLink>
+        <ButtonLink href="/rooms" variant="secondary">
+          Browse apartments
         </ButtonLink>
       </PageHeader>
 
@@ -91,30 +59,34 @@ export default function ContactPage() {
             <SectionHeading
               eyebrow="Send a message"
               title="Tell us what you need."
-              description="The more context you give dates, party size, the nature of the trip the easier it is to demonstrate how the concierge desk would respond."
+              description="Dates, party size and the nature of the trip are useful context. Every message is recorded with the name and email you provide here."
             />
             <ContactForm />
           </div>
 
           <aside className="flex flex-col gap-8">
-            <div className="flex flex-col divide-y divide-stone/70 border border-stone/80 bg-white">
-              {contactItems.map((item) => (
-                <div key={item.label} className="flex items-start gap-4 p-6">
-                  <span className="flex size-10 shrink-0 items-center justify-center border border-bronze/30 text-bronze">
-                    <item.icon aria-hidden="true" className="size-4" />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[0.64rem] uppercase tracking-[0.18em] text-charcoal/50">
-                      {item.label}
-                    </span>
-                    <span className="text-[0.95rem] text-charcoal">{item.value}</span>
-                    <span className="text-[0.74rem] text-charcoal/50">{item.note}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col gap-6 border-y border-stone/80 py-6">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[0.68rem] text-charcoal/70">Location</span>
+                <span className="font-display text-2xl">
+                  {siteConfig.location.city}, {siteConfig.location.country}
+                </span>
+                <span className="text-[0.82rem] leading-relaxed text-charcoal/70">
+                  No street address or public telephone number is published for this design
+                  concept.
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1.5 border-t border-stone/70 pt-5">
+                <span className="text-[0.68rem] text-charcoal/70">Response</span>
+                <span className="text-[0.88rem] leading-relaxed text-charcoal/70">
+                  The form is the only contact route. Messages are stored, but the inbox is not
+                  monitored.
+                </span>
+              </div>
             </div>
 
-            <ConceptNotice tone="light" />
+            <ConceptNotice tone="light" detailed />
           </aside>
         </div>
       </section>
@@ -124,7 +96,7 @@ export default function ContactPage() {
           <SectionHeading
             eyebrow="Common questions"
             title="Before you write."
-            description="A few things worth knowing about the prototype behind this website."
+            description="A few things worth knowing about the project behind this website."
           />
 
           <div className="flex flex-col divide-y divide-stone/70 border-y border-stone/70">
@@ -132,10 +104,12 @@ export default function ContactPage() {
               <details key={faq.question} className="group py-5">
                 <summary className="flex cursor-pointer items-center justify-between gap-4 font-display text-xl leading-snug text-charcoal marker:content-none">
                   {faq.question}
-                  <MessageSquare
+                  <span
                     aria-hidden="true"
-                    className="size-4 shrink-0 text-bronze transition-transform duration-300 group-open:rotate-90"
-                  />
+                    className="text-lg leading-none text-bronze transition-transform duration-300 group-open:rotate-45"
+                  >
+                    +
+                  </span>
                 </summary>
                 <p className="pt-3 text-[0.92rem] leading-relaxed text-charcoal/70">
                   {faq.answer}

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Phone, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { Wordmark } from "@/components/layout/wordmark";
-import { primaryNav, siteConfig } from "@/data/site";
+import { primaryNav } from "@/data/site";
 import { cn } from "@/lib/utils";
 
 function isActivePath(pathname: string, href: string): boolean {
@@ -19,7 +19,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Escape to close + lock background scrolling while open.
+  // Escape to close + lock background scrolling while the mobile menu is open.
   useEffect(() => {
     if (!open) return;
 
@@ -43,7 +43,7 @@ export function SiteHeader() {
         <Wordmark compact />
 
         <nav aria-label="Primary" className="hidden lg:block">
-          <ul className="flex items-center gap-8">
+          <ul className="flex items-center gap-7 xl:gap-9">
             {primaryNav.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
@@ -52,15 +52,15 @@ export function SiteHeader() {
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative py-2 text-[0.72rem] font-medium uppercase tracking-[0.19em] transition-colors duration-300",
-                      active ? "text-bronze" : "text-charcoal/75 hover:text-charcoal",
+                      "relative py-2 text-[0.82rem] transition-colors duration-300",
+                      active ? "text-charcoal" : "text-charcoal/65 hover:text-charcoal",
                     )}
                   >
                     {item.label}
                     <span
                       aria-hidden="true"
                       className={cn(
-                        "absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-bronze transition-transform duration-500",
+                        "absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-charcoal transition-transform duration-500",
                         active && "scale-x-100",
                       )}
                     />
@@ -73,7 +73,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <ButtonLink href="/book" size="sm" className="hidden sm:inline-flex">
-            Reserve your stay
+            Reserve
           </ButtonLink>
 
           <button
@@ -84,7 +84,11 @@ export function SiteHeader() {
             aria-label={open ? "Close menu" : "Open menu"}
             className="flex size-11 items-center justify-center border border-charcoal/20 text-charcoal transition-colors duration-300 hover:border-bronze hover:text-bronze lg:hidden"
           >
-            {open ? <X aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}
+            {open ? (
+              <X aria-hidden="true" className="size-5" />
+            ) : (
+              <Menu aria-hidden="true" className="size-5" />
+            )}
           </button>
         </div>
       </div>
@@ -94,7 +98,7 @@ export function SiteHeader() {
         id="mobile-navigation"
         hidden={!open}
         className={cn(
-          "fixed inset-0 z-40 overflow-y-auto bg-ivory pt-26 pb-14 transition-opacity duration-500 lg:hidden",
+          "fixed inset-0 z-40 overflow-y-auto bg-ivory pb-14 pt-24 transition-opacity duration-500 lg:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
@@ -119,7 +123,7 @@ export function SiteHeader() {
                     >
                       {item.label}
                     </span>
-                    <span className="text-[0.8rem] leading-relaxed text-charcoal/55">
+                    <span className="text-[0.8rem] leading-relaxed text-charcoal/70">
                       {item.description}
                     </span>
                   </Link>
@@ -128,7 +132,7 @@ export function SiteHeader() {
             })}
           </ul>
 
-          <div className="mt-8 flex flex-col gap-5">
+          <div className="mt-8">
             <ButtonLink
               href="/book"
               size="lg"
@@ -138,21 +142,6 @@ export function SiteHeader() {
             >
               Reserve your stay
             </ButtonLink>
-
-            <div className="flex flex-col gap-2 text-[0.82rem] text-charcoal/65">
-              <a
-                href={`tel:${siteConfig.contact.phone.replace(/\s/g, "")}`}
-                tabIndex={open ? undefined : -1}
-                className="inline-flex items-center gap-2 hover:text-bronze"
-              >
-                <Phone aria-hidden="true" className="size-3.5 text-bronze" />
-                {siteConfig.contact.phone}
-                <span className="text-charcoal/40">({siteConfig.contact.phoneNote})</span>
-              </a>
-              <p className="text-charcoal/45">
-                {siteConfig.location.district}, {siteConfig.location.city}
-              </p>
-            </div>
           </div>
         </nav>
       </div>

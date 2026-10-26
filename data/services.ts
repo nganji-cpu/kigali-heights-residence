@@ -1,10 +1,10 @@
 import type { Service, ServiceCategory, PricingType } from "@/types";
 
 /**
- * Optional guest services for the concept prototype.
+ * Optional guest services for the design concept.
  *
- * Every price is an illustrative estimate used to demonstrate the booking
- * flow. Nothing here represents a real service that is currently provided.
+ * Every price is an illustrative estimate used by the booking flow. Nothing
+ * here represents a service that is currently operating.
  */
 export const services: Service[] = [
   {

@@ -13,7 +13,7 @@ export type ButtonVariant =
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 border text-[0.78rem] font-medium uppercase tracking-[0.16em] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2";
+  "inline-flex items-center justify-center gap-2 border text-[0.84rem] font-medium tracking-[0.01em] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -30,9 +30,9 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "px-4 py-2.5 text-[0.68rem]",
+  sm: "px-4 py-2.5 text-[0.78rem]",
   md: "px-6 py-3.5",
-  lg: "px-8 py-4 text-[0.8rem]",
+  lg: "px-8 py-4 text-[0.88rem]",
 };
 
 interface CommonProps {

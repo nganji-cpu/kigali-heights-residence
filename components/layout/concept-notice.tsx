@@ -1,43 +1,32 @@
 import { cn } from "@/lib/utils";
-import { Info } from "lucide-react";
+import { siteConfig } from "@/data/site";
 
 interface ConceptNoticeProps {
   tone?: "dark" | "light";
   className?: string;
+  /** Show the full concept/booking disclaimer instead of the one-line notice. */
+  detailed?: boolean;
 }
 
 const shortText =
-  "Concept prototype a fictional design study, not a real operating property.";
-
-
+  "Kigali Heights Residence is a design concept, not an operating property. The property, amenities, rates and availability are illustrative; no payment is taken.";
 
 /**
- * Discreet but readable concept-project disclosure. Appears in the footer and
- * on any page that could otherwise be mistaken for a live commercial site.
+ * Discreet project disclosure. Appears in the footer and on any page that
+ * could otherwise be mistaken for a live commercial site.
  */
-export function ConceptNotice({ tone = "dark", className}: ConceptNoticeProps) {
+export function ConceptNotice({ tone = "dark", className, detailed = false }: ConceptNoticeProps) {
   const isLight = tone === "light";
 
   return (
     <div
       className={cn(
-        "flex items-start gap-3 border px-4 py-3.5 text-[0.8rem] leading-relaxed",
-        isLight
-          ? "border-bronze/35 bg-bronze/8 text-charcoal/80"
-          : "border-ivory/15 bg-ivory/5 text-ivory/70",
+        "border-l-2 border-bronze/45 pl-3 text-[0.78rem] leading-relaxed",
+        isLight ? "text-charcoal/70" : "text-ivory/55",
         className,
       )}
     >
-      <Info
-        aria-hidden="true"
-        className={cn("mt-0.5 size-4 shrink-0", isLight ? "text-bronze" : "text-bronze-soft")}
-      />
-      <p>
-        <span className={cn("font-medium", isLight ? "text-charcoal" : "text-ivory/90")}>
-          Concept project.
-        </span>{" "}
-        {shortText}
-      </p>
+      <p>{detailed ? siteConfig.conceptNotice : shortText}</p>
     </div>
   );
 }

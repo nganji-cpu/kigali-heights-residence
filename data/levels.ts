@@ -46,7 +46,7 @@ export const residenceLevels: ResidenceLevel[] = [
     name: "Deluxe Apartments",
     tagline: "More living space, separate dining and refined finishes",
     description:
-      "Level three steps up in space and material. Apartments here separate living from sleeping, add a real dining table and a full kitchen, and open onto balconies the level most guests choose for stays of a week or longer.",
+      "Level three steps up in space and material. Apartments here separate living from sleeping, add a real dining table and a full kitchen, and open onto private and corner balconies.",
     facilities: [
       "Separate living and dining areas",
       "Full kitchens",

@@ -9,7 +9,7 @@ import type {
 import { daysBetween, formatUSD } from "@/lib/utils";
 
 /**
- * Booking domain logic for the prototype.
+ * Booking domain logic for the concept.
  *
  * All calculations are illustrative. Nothing here talks to a server, charges a
  * card, or creates a real reservation.
@@ -72,7 +72,7 @@ export function validateStay({
   if (!Number.isFinite(guests) || guests < 1) {
     errors.guests = "At least one guest is required.";
   } else if (guests > MAX_GUESTS) {
-    errors.guests = `For groups larger than ${MAX_GUESTS}, please contact the concierge.`;
+    errors.guests = `For groups larger than ${MAX_GUESTS}, please send a message through the contact page.`;
   } else if (room && guests > room.capacity) {
     errors.guests = `${room.name} sleeps up to ${room.capacity} guests.`;
   }
@@ -104,7 +104,7 @@ export function validateGuestDetails(values: BookingFormValues): BookingFormErro
   }
 
   if (!values.phone.trim()) {
-    errors.phone = "A contact number helps the concierge reach you.";
+    errors.phone = "A contact number is required for the reservation record.";
   } else if (!PHONE_PATTERN.test(values.phone.trim())) {
     errors.phone = "Please enter a valid phone number.";
   }
@@ -186,16 +186,6 @@ export function buildPriceBreakdown({
   };
 }
 
-/** Generates a clearly-labelled demonstration reference. */
-export function generateReference(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let suffix = "";
-  for (let index = 0; index < 4; index += 1) {
-    suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return `KHR-DEMO-${suffix}`;
-}
-
 /* ------------------------------------------------------------------ */
 /* Browser storage — always guarded so server rendering stays clean.   */
 /* ------------------------------------------------------------------ */
@@ -240,7 +230,7 @@ export function writeSelectedServices(slugs: string[]): void {
   try {
     window.localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(slugs));
   } catch {
-    /* Storage can be unavailable (private mode); the demo still works. */
+    /* Storage can be unavailable in private mode; the page still works. */
   }
 }
 
