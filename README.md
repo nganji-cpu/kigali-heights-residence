@@ -1,282 +1,486 @@
-# Kigali Heights Residence — concept prototype
+# Kigali Heights Residence
 
-A presentation-ready front-end prototype for **Kigali Heights Residence**, a fictional
-five-level apartment residence in Kigali, Rwanda. It is a design study of apartment
-hospitality for business travellers and longer stays.
+An editorial hospitality concept for six apartments in Kigali, Rwanda, built with Next.js and a local MySQL database.
 
-> **This is not a real property.** Every room, rate, service, level and piece of copy is
-> invented sample content. Prices are labelled as illustrative estimates, availability is
-> not tracked, nothing is charged, and no reservation is ever created. The site is marked
-> `noindex` and `robots.ts` disallows crawling so the fictional content stays out of search
-> results.
+> **This is a design concept, not an operating property.** The building, apartments, rates, services and availability are illustrative. Reservations are saved so the booking flow can be tested, but they do not hold a real apartment. No payment is requested or taken.
+
+The site is a private project, not a live hotel. It is marked `noindex` and `robots.ts` disallows crawling.
 
 ---
 
-## 1. Summary
+## 1. What is real
 
-- **What it is:** a working Next.js App Router prototype — real routing, real filtering,
-  working reservation flow with validation and a live price summary, an interactive
-  five-level building explorer, and a services planner.
-- **Design direction:** editorial serif headlines (Cormorant Garamond) over a clean sans
-  body (Inter), on an ivory / white / charcoal / bronze / stone / sage palette. No neon, no
-  glassmorphism, no heavy rounded card stacks.
-- **State of the build:** `npm run lint` → 0 problems, `npx tsc --noEmit` → clean,
-  `npm run build` → 21 pages generated (static + Partial Prerender).
-- **Back end:** none. All content is local TypeScript data; all "saving" is browser
-  `localStorage`. No Supabase, no Redux, no database, no payment provider, no network calls.
+- A MySQL / MariaDB schema with relational constraints, seed data and idempotent initialisation.
+- Database-backed apartment listings, room details, amenities, services and homepage features.
+- A four-step booking flow that validates on the server and persists reservations.
+- Server-calculated totals from database prices. The browser cannot submit a total.
+- Transactional overlap protection with `SELECT ... FOR UPDATE` and a `409 ROOM_UNAVAILABLE` response.
+- Persisted contact messages through `POST /api/contact`.
+- Persisted service requests attached to existing bookings.
+- Real loading, empty, validation and server-error states.
+- An optional Spline slot and an external ALU Kigali360 campus tour on `/explore`.
 
-### Tech stack
+## 2. What is illustrative
 
-| Piece            | Choice                                                  |
-| ---------------- | ------------------------------------------------------- |
-| Framework        | Next.js `16.4.0` (App Router, Turbopack)                |
-| Language         | TypeScript `^5`                                         |
-| UI runtime       | React `19.3.0`                                          |
-| Styling          | Tailwind CSS `v4` via `@tailwindcss/turbopack`          |
-| Icons            | `lucide-react`                                          |
-| 3D (optional)    | `@splinetool/react-spline` (loaded only when configured)|
-| Fonts            | `next/font/google` — Cormorant Garamond + Inter         |
-| Linting          | ESLint `9` + `eslint-config-next` (flat config)         |
-
-> **Note on this Next.js version:** cache components and partial prefetching are enabled in
-> `next.config.ts`, so `params`/`searchParams` are Promises, dynamic APIs must sit inside
-> `<Suspense>`, and clock/storage reads happen through `useSyncExternalStore` rather than
-> during render. See `lib/client-store.ts`.
+- The property, its location within Kigali, rooms, dimensions, amenities, services and rates.
+- Availability is based only on confirmed bookings in this database. There is no channel manager, housekeeping inventory or real calendar.
+- Photography is licensed stock imagery from Wikimedia Commons. It does not depict this residence.
+- No payment provider, user accounts, outbound email or live support inbox is connected.
+- The contact form saves a message. It does not send email or create a booking.
+- The ALU tour is an external campus walkthrough. It is not Kigali Heights Residence.
 
 ---
 
-## 2. Local URL and exact commands
+## 3. Stack
 
-Install dependencies once, then run any of the following from the project root
-(`C:\Users\DWAG\Desktop\kigali_heights_residence`):
+| Piece | Choice |
+| --- | --- |
+| Framework | Next.js `16.4.3` (App Router, Turbopack, cache components) |
+| Language | TypeScript `^5` |
+| UI | React `19.3.0` |
+| Styling | Tailwind CSS `v4` |
+| Icons | `lucide-react` |
+| Database | MySQL 8 / MariaDB 10.4 (XAMPP build tested) |
+| Driver | `mysql2` promise API with a connection pool |
+| Fonts | Newsreader and Inter via `next/font/google` |
+| 3D | `@splinetool/react-spline`, optional and environment-driven |
 
-```bash
-npm install          # install dependencies
-npm run dev          # start dev server  -> http://localhost:3000
-```
-
-```bash
-npm run lint         # ESLint (expects: no output / 0 problems)
-npx tsc --noEmit     # TypeScript type check (expects: no output)
-npm run build        # production build (expects: 21 pages, compiled successfully)
-npm run start        # serve the production build -> http://localhost:3000
-npm run start -- -p 3100   # serve on an alternate port
-```
-
-**Local URL:** <http://localhost:3000>
+The Next.js security upgrade is applied: `next` and `eslint-config-next` are pinned to `16.4.3`, and `experimental.agentUpgrade` is set to `security` in `next.config.ts`.
 
 ---
 
-## 3. Folder structure
+## 4. Quick start
 
+### Prerequisites
+
+- Node.js 22 or newer.
+- XAMPP (or another local MySQL/MariaDB installation) with the MySQL component running.
+- A database user that can create the `kigali_heights_residence` database.
+
+### Install and configure
+
+```powershell
+npm install
+Copy-Item .env.example .env.local
 ```
-kigali_heights_residence/
-├─ app/                         # App Router routes
-│  ├─ layout.tsx                # <html>, fonts, metadata, header/footer shell
-│  ├─ page.tsx                  # Home
-│  ├─ globals.css               # Tailwind theme tokens (the palette) + base styles
-│  ├─ icon.svg                  # Favicon
-│  ├─ robots.ts                 # Disallows all crawlers (concept content)
-│  ├─ loading.tsx               # Route-level loading UI
-│  ├─ error.tsx                 # Route error boundary (client)
-│  ├─ not-found.tsx             # 404
-│  ├─ rooms/
-│  │  ├─ page.tsx               # Accommodation index + filtering
-│  │  └─ [slug]/page.tsx        # Room detail + reserve card
-│  ├─ explore/page.tsx          # Interactive five-level explorer + Spline slot
-│  ├─ services/page.tsx         # Guest services + planner
-│  ├─ book/page.tsx             # Multi-step reservation wizard
-│  ├─ discover/page.tsx         # Kigali / culture / dining editorial
-│  ├─ about/page.tsx            # Concept, philosophy, architecture
-│  ├─ contact/page.tsx          # Contact form (demo)
-│  └─ credits/page.tsx          # Image licensing / attributions
-├─ components/
-│  ├─ layout/                   # site-header, site-footer, announcement-bar,
-│  │                            # page-header, wordmark, concept-notice
-│  ├─ home/                     # hero, intro, featured-rooms, architecture-showcase,
-│  │                            # rooftop-feature, services-preview, explore-preview,
-│  │                            # destination-feature, reservation-cta
-│  ├─ rooms/                    # rooms-browser, room-card, room-gallery,
-│  │                            # room-reserve-card
-│  ├─ explore/                  # residence-explorer, building-diagram, spline-scene
-│  ├─ services/                 # service-card, service-icon, service-planner
-│  ├─ booking/                  # booking-form (4-step wizard), booking-search-panel
-│  ├─ contact/                  # contact-form
-│  └─ ui/                       # button, field, price-summary, section-heading,
-│                               # status-message, reveal, not-found-state
-├─ data/                        # Local TypeScript content (single source of truth)
-│  ├─ site.ts                   # Brand, nav, contact, disclaimer copy
-│  ├─ rooms.ts                  # 6 apartments/suites + query helpers
-│  ├─ levels.ts                 # 5 building levels + narrative
-│  ├─ services.ts               # 8 guest services + pricing types
-│  ├─ experiences.ts            # Discover-page editorial sections
-│  └─ credits.ts                # 53 image attributions for /credits
-├─ lib/
-│  ├─ utils.ts                  # cn(), formatUSD(), date helpers, nights
-│  ├─ booking.ts                # validation, price breakdown, storage stores
-│  └─ client-store.ts           # useSyncExternalStore hooks (today, services, draft)
-├─ types/index.ts               # Shared domain types
-├─ public/
-│  ├─ images/                   # 53 licensed JPEGs + ATTRIBUTIONS.md
-│  └─ ...
-├─ next.config.ts               # cacheComponents, partialPrefetching, Tailwind loader
-├─ eslint.config.mjs
-├─ tsconfig.json
-└─ package.json
+
+The defaults match a standard XAMPP installation:
+
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=kigali_heights_residence
+```
+
+`.env.local` is git-ignored. Never expose these values with a `NEXT_PUBLIC_` prefix.
+
+### Create the database
+
+Start MySQL, then run:
+
+```powershell
+npm run db:init
+```
+
+The script applies `database/schema.sql`, which is safe to rerun. It uses `CREATE TABLE IF NOT EXISTS` and upserts seed rows by unique key.
+
+Expected seed counts:
+
+```text
+Apartments: 4
+Rooms: 6
+Amenities: 30
+Room images: 25
+Services: 8
+Existing bookings: 0
+Contact messages: 0
+```
+
+Existing bookings and contact messages are preserved when the seed is rerun.
+
+### Run the app
+
+```powershell
+npm run dev
+```
+
+Open <http://localhost:3000>.
+
+For a production check:
+
+```powershell
+npm run lint
+npx tsc --noEmit
+npm run build
+npm run start
 ```
 
 ---
 
-## 4. Routes
+## 5. Database
 
-| Route             | Purpose                                                             |
-| ----------------- | ------------------------------------------------------------------- |
-| `/`               | Home: hero, concept intro, featured stays, architecture, rooftop, services and city previews, reservation CTA. |
-| `/rooms`          | Accommodation index with category + level filters and live result count. |
-| `/rooms/[slug]`   | Room detail: gallery, amenities, facts, related rooms, reserve card with live estimate. Six real routes. |
-| `/explore`        | Interactive five-level residence explorer (floor selection) with the optional Spline 3D slot. |
-| `/services`       | Guest services grid + planner; categories are transport, dining, lifestyle and business. |
-| `/book`           | 4-step reservation wizard: stay → services → details → review, then a demo confirmation. |
-| `/discover`       | Kigali city, culture, dining and business-travel editorial. |
-| `/about`          | Concept, philosophy and architecture narrative. |
-| `/contact`        | Contact form with validation and a demo submission state. |
-| `/credits`        | Image credits and licence attributions. |
-| `not-found`       | Designed 404. |
-| `error`           | Designed client error boundary. |
-| `loading`         | Route loading fallback. |
+### Schema
 
----
+Database: `kigali_heights_residence`, InnoDB, `utf8mb4` / `utf8mb4_unicode_ci`.
 
-## 5. What actually works (interactive)
+| Table | Purpose |
+| --- | --- |
+| `apartments` | Four categories: Standard, Deluxe, Executive, Penthouse. |
+| `rooms` | Six bookable apartments with price, capacity, floor, size, bedding and view. |
+| `amenities` | Shared amenity list. |
+| `room_amenities` | Many-to-many link between rooms and amenities. |
+| `room_images` | Ordered gallery images for each room. |
+| `services` | Eight optional guest services with pricing rules. |
+| `bookings` | Persisted reservations with server-calculated totals. |
+| `booking_services` | Services attached to a booking, with stored line amounts. |
+| `contact_messages` | Persisted contact form submissions. |
 
-These are real, functioning client-side behaviours you can exercise in the browser:
+`bookings.reference` is the customer-facing reference, for example `KHR-3D86E162`. Booking totals and service line amounts are written by the server, never by the browser.
 
-- **Mobile navigation** — the header menu toggles open/closed with correct `aria-expanded`
-  and `hidden` state.
-- **Room filtering** (`/rooms`) — filter by category (Standard / Deluxe / Executive /
-  Penthouse) and by level (2–5). The result count and heading update live, and the active
-  filter is mirrored into the URL (`/rooms?level=5`, `/rooms?category=penthouse`) via
-  `history.replaceState`, so links are shareable.
-- **Room detail routing** — each of the six rooms has its own working `/rooms/[slug]` page
-  with gallery, amenity list, facts and "related stays" suggestions.
-- **Reserve card estimate** (`/rooms/[slug]`) — pick arrival/departure and guest count; the
-  card computes nights and an illustrative subtotal immediately and validates the stay.
-- **Services planner** (`/services`) — select one or more services; the selection counter
-  updates, the choice is saved to `localStorage`, and a "saved" confirmation appears.
-- **Booking wizard** (`/book`) — four steps with a progress rail:
-  1. **Stay** — dates and guests; cannot be before today, departure must be after arrival,
-     guest count is checked against the chosen apartment's capacity.
-  2. **Services** — optional guest services, with services saved from `/services` carried in
-     automatically.
-  3. **Details** — lead guest name, email and phone, validated (invalid emails are blocked).
-  4. **Review** — full summary with an itemised price breakdown: rooms subtotal, services
-     subtotal and grand total.
-  Submitting shows a **demo confirmation** with a clearly-labelled reference such as
-  `KHR-DEMO-WB79` and an explicit "no booking was created" disclaimer.
-- **URL prefill** — `/book` accepts stay parameters (room, dates, guests) so the wizard can
-  be opened pre-filled from elsewhere on the site.
-- **Live price summary** — nights, per-night rate, services and total update as you edit,
-  shared between the reserve card and the booking wizard.
-- **Contact form** (`/contact`) — required-field and email validation with inline errors and
-  a demo success message. Nothing is transmitted.
-- **Floor selection** (`/explore`) — select any of the five levels to read that level's
-  narrative, facilities and representative image.
-- **Reveal animations** — sections fade/rise into view via `IntersectionObserver`, applied
-  by writing a `data-visible` attribute to the DOM (no per-element React state).
-- **Graceful 3D fallback** — see §7.
+### Seed data
+
+The schema seeds 4 apartment categories, 6 rooms, 30 amenities, 25 room images and 8 services. It does not seed bookings or contact messages.
+
+### Useful commands
+
+```powershell
+# Open a MySQL shell
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 kigali_heights_residence
+
+# Inspect rooms
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 kigali_heights_residence -e "SELECT id, slug, name, price_per_night, capacity FROM rooms ORDER BY id;"
+
+# Inspect bookings
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 kigali_heights_residence -e "SELECT reference, check_in, check_out, guests, total, status FROM bookings ORDER BY id DESC;"
+
+# Inspect contact messages
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 kigali_heights_residence -e "SELECT id, name, email, subject, created_at FROM contact_messages ORDER BY id DESC;"
+```
+
+Deleting a booking cascades its `booking_services` rows:
+
+```powershell
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 kigali_heights_residence -e "DELETE FROM bookings WHERE reference = 'KHR-XXXXXXXX';"
+```
+
+To rebuild from scratch:
+
+```powershell
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 -e "DROP DATABASE IF EXISTS kigali_heights_residence;"
+npm run db:init
+```
 
 ---
 
-## 6. What is simulated (demo-only)
+## 6. API
 
-Clear and honest about the boundary between prototype and production:
+All endpoints are same-origin Next.js route handlers and return JSON. Validation and pricing happen on the server.
 
-- **All content is fictional.** Room names, rates, sizes, amenities, service prices, the
-  address and the contact details are invented. There is no real availability calendar.
-- **Prices are illustrative estimates**, labelled as such throughout; they are not tariffs.
-- **Reservation submission does not create a booking.** It generates a local demo
-  reference and shows a confirmation screen only. No data leaves the browser and no server
-  is contacted.
-- **Services selection "save"** writes to `localStorage`; it is a browser-local demo, not an
-  account or server record.
-- **Contact form** validates and shows a success state; it does not send email.
-- **Images** are licensed Wikimedia Commons photographs used as *representative* imagery
-  for a concept — they are not photographs of a real Kigali Heights Residence. Licences are
-  recorded on `/credits` and in `public/images/ATTRIBUTIONS.md`.
-- **No payments** of any kind are integrated.
-- **No analytics, no tracking, no authentication.**
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/rooms` | List rooms. Optional `category`, `level`, `guests`, `featured=true`, `limit`. |
+| `GET` | `/api/rooms/meta` | Categories, amenities and per-level counts. |
+| `GET` | `/api/rooms/[slug]` | One room with amenities, images and related rooms. |
+| `GET` | `/api/services` | Guest services and category counts. |
+| `GET` | `/api/availability` | Check availability for a room and date range. |
+| `POST` | `/api/bookings` | Validate, price and persist a booking. |
+| `GET` | `/api/bookings` | Recent summaries without contact details. Optional `limit` (1–100). |
+| `GET` | `/api/bookings?reference=KHR-...` | One full booking by reference. |
+| `GET` | `/api/bookings/[reference]` | Same lookup via the path. |
+| `POST` | `/api/service-requests` | Add a service to an existing booking and recalculate totals. |
+| `POST` | `/api/contact` | Persist a contact message. |
+
+### Error shape
+
+```json
+{
+  "error": {
+    "message": "Please check the highlighted fields and try again.",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "checkOut": "Departure must be at least one night after arrival."
+    }
+  }
+}
+```
+
+| Status | Meaning |
+| --- | --- |
+| `200` | OK. |
+| `201` | Booking, service request or contact message created. |
+| `400` | Malformed JSON, query parameter or reference format. |
+| `404` | Unknown room or booking reference. |
+| `409` | Overlap (`ROOM_UNAVAILABLE`) or duplicate service (`SERVICE_ALREADY_ADDED`). |
+| `422` | Field validation failed. |
+| `500` | Unexpected server error. SQL text and credentials are never returned. |
+
+### Contact message
+
+```powershell
+$body = @{
+  name    = "Amina Uwase"
+  email   = "amina@example.com"
+  subject = "general"
+  message = "I would like to know more about the longer-stay apartments."
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:3000/api/contact" `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+Allowed subjects: `general`, `reservation`, `long-stay`, `services`, `concept`. A successful response is `201` with the saved message id and timestamp. The message is stored; no email is sent and no live inbox is monitored.
+
+### Create a booking
+
+Required fields: `roomSlug`, `checkIn`, `checkOut`, `guests`, `fullName`, `email`, `phone`. Optional: `requests`, `serviceSlugs` (array). Do not send prices.
+
+```powershell
+$body = @{
+  roomSlug     = "standard-city-apartment"
+  checkIn      = "2027-01-10"
+  checkOut     = "2027-01-13"
+  guests       = 2
+  fullName     = "Amina Uwase"
+  email        = "amina@example.com"
+  phone        = "+250 788 123 456"
+  requests     = "Quiet room away from the lift, please."
+  serviceSlugs = @("airport-pickup")
+} | ConvertTo-Json -Depth 5
+
+$response = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:3000/api/bookings" `
+  -ContentType "application/json" `
+  -Body $body
+
+$response.booking.reference
+$response.booking.price
+```
+
+A successful response is `201` with a generated reference, the room, the services and a server-calculated price breakdown.
+
+### Add a service
+
+```powershell
+$request = @{
+  reference   = "KHR-XXXXXXXX"
+  serviceSlug = "laundry-service"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:3000/api/service-requests" `
+  -ContentType "application/json" `
+  -Body $request
+```
+
+The new `booking_services` row starts as `requested`. Totals are recalculated from the database room price and the service pricing rule (`per-trip`, `per-day`, `per-person`, `per-person-day` or `per-booking`).
+
+### Parameterised SQL
+
+All database access goes through `lib/server/repository.ts` and `mysql2` placeholders. User input is never concatenated into SQL. Filters are assembled from static fragments with `?` values, and `LIMIT ?` is bounded. Server errors are logged but replaced with a generic message before reaching the browser.
 
 ---
 
-## 7. How to add the Spline 3D scene later
+## 7. Booking rules
 
-The Explore page already has a reusable wrapper (`components/explore/spline-scene.tsx`).
-Until a scene is connected it renders a **designed architectural fallback** — never an empty
-black box, never a console error.
-
-1. Build/publish a scene at <https://spline.design> and copy the `.splinecode` export URL
-   (it looks like `https://prod.spline.design/XXXXXXXXXXXX/scene.splinecode`).
-2. Create `.env.local` in the project root and add:
-
-   ```bash
-   NEXT_PUBLIC_SPLINE_SCENE_URL=https://prod.spline.design/XXXXXXXXXXXX/scene.splinecode
-   ```
-
-3. Restart the dev server (`npm run dev`).
-
-That's it. When the variable is present the wrapper dynamically imports
-`@splinetool/react-spline` (client-only, with a loading state), shows an "Interactive Spline
-scene connected" status chip, and falls back to the designed illustration if the scene fails
-to load at runtime. `SplineScene` also accepts a `sceneUrl` prop to override the env value
-per instance.
+1. Check-in cannot be earlier than the server's local date.
+2. Checkout must be after check-in.
+3. Guests must be between 1 and 6 overall and within the selected apartment's capacity.
+4. Name, a valid email and a phone number are required.
+5. Optional service slugs are deduplicated, limited to 20 and must exist.
+6. Availability is checked inside a transaction: the room row is locked `FOR UPDATE`, then the server looks for a confirmed booking where `check_in < requested_check_out AND check_out > requested_check_in`.
+7. If an overlap exists, the transaction rolls back and returns `409 ROOM_UNAVAILABLE`.
+8. Totals are `nights × rooms.price_per_night` plus each service's server-side amount. The browser estimate is never trusted.
+9. References are generated as `KHR-` plus 8 uppercase hexadecimal characters with a unique constraint.
+10. Service requests are attached in the same transaction as the total recalculation.
 
 ---
 
-## 8. Content model
+## 8. Frontend
 
-All copy lives in `data/` and is typed by `types/index.ts`:
+| Route | Purpose |
+| --- | --- |
+| `/` | Hero, short introduction, featured apartments, amenities backed by room data, and a discreet booking CTA. |
+| `/rooms` | Filterable apartment index, backed by the database. |
+| `/rooms/[slug]` | Apartment detail with gallery, specs, amenities, building context and a booking card. |
+| `/book` | Four-step booking flow: stay, services, details, review. |
+| `/services` | Service planner and the form for adding a service to an existing booking. |
+| `/explore` | Interactive five-level residence explorer, the external ALU tour and the level summary. |
+| `/about` | Concept, principles, architecture and an explicit “What is real, and what is not” section. |
+| `/discover` | Editorial impressions of Kigali and Rwanda. |
+| `/contact` | Persisted contact form, verified details only, and common questions. |
+| `/credits` | Wikimedia Commons licence attributions. |
 
-- **`data/rooms.ts`** — 6 apartments/suites across levels 2–5, each with slug, category,
-  capacity, size, amenities and image set. Helper selectors (`getRoomBySlug`,
-  `getRoomsByCategory`, `getRoomsOnLevel`, `getRelatedRooms`, `getFeaturedRooms`) feed the
-  pages, so **adding a room is a single-object edit here**.
-- **`data/services.ts`** — 8 services with a `pricingType`
-  (`per-trip` / `per-day` / `per-person` / `per-person-day` / `per-booking`) that drives the
-  price maths.
-- **`data/levels.ts`** — the five building levels and their narrative.
-- **`data/experiences.ts`** — editorial sections for `/discover`.
-- **`data/site.ts`** — brand, navigation, contact and the concept disclaimer. The brand name
-  is provisional and propagates from this one file.
-- **`data/credits.ts`** — 53 image attributions surfaced on `/credits`.
+Primary navigation is limited to Apartments, Residence, Explore, Services and Contact, plus a Reserve action. The footer also links to the image credits and the concept disclosure.
 
----
+The visual direction is editorial: Newsreader display type, Inter body copy, an ivory/charcoal palette with clay accents, hairlines instead of card shadows, asymmetrical image grids and restrained motion.
 
-## 9. Verification
+### Loading and error behaviour
 
-Run just before hand-off:
-
-- `npm run lint` → **0 problems**
-- `npx tsc --noEmit` → **clean**
-- `npm run build` → **compiled successfully; 21 pages** (static + Partial Prerender for
-  `/book`, `/rooms` and dynamic room slugs)
-
-Routes were exercised against a production server: all published routes return HTTP 200,
-an unknown path returns 404, and each page renders the expected `<title>` and `<h1>` with no
-server-rendering errors. Client interactions (filters, wizard steps, validation, storage,
-mobile nav, floor selection) were driven through the DOM and verified.
+- Database-backed sections stream inside `<Suspense>`.
+- `/rooms`, `/book` and `/services` show clear, non-technical retry states if the database is unavailable.
+- The global error boundary catches unexpected render errors.
+- `lib/api-client.ts` normalises network and API errors for the client forms.
+- Booking field errors from the server are mapped back to the relevant inputs.
+- Contact messages are only reported as saved after the API returns `201`.
 
 ---
 
-## 10. Known limitations / remaining issues
+## 9. ALU tour and Spline
 
-- **3D is not connected** — by design; the Spline slot shows a designed fallback until
-  `NEXT_PUBLIC_SPLINE_SCENE_URL` is set (§7).
-- **No persistence beyond the browser** — `localStorage` is per-device and can be
-  unavailable in private mode; the UI degrades gracefully when it is.
-- **No real availability or booking** — intentionally out of scope for a front-end concept.
-- **Representative imagery** — photos are licensed stand-ins, not the (fictional) property.
-- **No automated test suite** — verification was manual plus type/lint/build checks; there
-  are no unit or end-to-end tests in this prototype.
-- **Partial Prerender caveat** — with cache components enabled, dynamic reads are streamed
-  into the shell; on very slow connections the route `loading.tsx` fallback is briefly
-  visible before content swaps in.
+The ALU tour on `/explore` is the public [ALU Kigali360](https://alu.kigali360.net/) campus tour. It is clearly labelled as an external reference, not Kigali Heights Residence. The iframe is lazy-loaded and includes a reload control, a new-tab link and a fallback for blocked or slow frames.
+
+The tour URL is a single constant in `components/explore/alu-tour.tsx`.
+
+The optional Spline scene is configured with:
+
+```dotenv
+NEXT_PUBLIC_SPLINE_SCENE_URL=https://prod.spline.design/XXXXXXXXXXXX/scene.splinecode
+```
+
+If the variable is unset or the scene fails, the designed architectural fallback is used. The Spline slot is independent of the ALU iframe and the database.
+
+---
+
+## 10. Verification
+
+Checked against the local MySQL instance and the Next.js development server on `http://localhost:3000`.
+
+### Static checks
+
+```text
+npm run lint        no lint errors
+npx tsc --noEmit    no type errors
+npm run build       compiled, type-checked and generated all routes
+npm audit           0 vulnerabilities
+```
+
+### API
+
+| Check | Result |
+| --- | --- |
+| `GET /api/rooms` | `200`, 6 rooms |
+| `GET /api/services` | `200`, 8 services |
+| `POST /api/contact` (valid) | `201`, row persisted in `contact_messages` |
+| `POST /api/contact` (invalid fields) | `422` with field errors |
+| `POST /api/contact` (malformed JSON) | `400` |
+| `POST /api/bookings` (valid) | `201`, server total and reference |
+| `POST /api/bookings` (overlap) | `409 ROOM_UNAVAILABLE` |
+| `POST /api/bookings` (adjacent dates) | `201` |
+| `POST /api/bookings` (invalid dates/capacity) | `422` |
+| `POST /api/service-requests` | `201`, total recalculated |
+
+### Browser
+
+- Four-step booking completed through the UI, including two services and a server-calculated total.
+- Contact form submitted and the row verified in MySQL.
+- Responsive layout checked at 390 px, 768 px and 1440 px with no horizontal overflow.
+- Mobile menu opened, locked background scrolling, exposed 97 px-tall link rows and closed cleanly.
+- Hero and page-header heights checked at each width.
+- All route images loaded; no broken images.
+- Browser console reported no errors on `/`, `/rooms`, `/rooms/[slug]`, `/book`, `/contact`, `/services`, `/explore`, `/about`, `/discover` and `/credits`.
+- Lighthouse accessibility scored 100 on every page tested: `/`, `/rooms`, `/rooms/deluxe-apartment`, `/book`, `/contact`, `/services`, `/explore`, `/about`, `/discover` and `/credits`.
+- Test bookings and contact messages created during verification were removed afterwards. Existing bookings were preserved.
+
+---
+
+## 11. Troubleshooting
+
+### MySQL does not start normally
+
+On the machine used for verification, the XAMPP MariaDB installation currently fails on a normal start with an InnoDB log sequence error during ACL initialisation. The app and schema were verified with a local, single-user workaround:
+
+```powershell
+& "C:\xampp\mysql\bin\mysqld.exe" --defaults-file="C:\xampp\mysql\bin\my.ini" --standalone --skip-grant-tables
+```
+
+`--skip-grant-tables` disables authentication and is **not** suitable for a shared, networked or production machine. The clean fix is to repair the local MariaDB data directory or reinstall/upgrade MariaDB, then start it normally. The application code does not depend on the workaround.
+
+### `ECONNREFUSED 127.0.0.1:3306`
+
+MySQL is not running. Start it in XAMPP or with the normal `mysqld` command, then retry.
+
+### `ER_ACCESS_DENIED_ERROR`
+
+Check `DB_USER` and `DB_PASSWORD` in `.env.local`. XAMPP's default is `root` with an empty password.
+
+### `ER_BAD_DB_ERROR` or `ER_NO_SUCH_TABLE`
+
+Run `npm run db:init`. If the `contact_messages` table is missing, this also creates it.
+
+### Port already in use
+
+```powershell
+npm run dev -- -p 3001
+# or
+npm run start -- -p 3100
+```
+
+### The ALU frame is blank
+
+Some browsers, extensions, corporate networks or third-party cookie settings block cross-origin iframes. Use **Open tour in a new tab**. The app intentionally does not proxy or scrape the tour.
+
+### A booking shows as unavailable
+
+Those dates overlap an existing confirmed booking for that apartment. Choose different dates or another apartment. Inspect existing stays:
+
+```powershell
+& "C:\xampp\mysql\bin\mysql.exe" -u root -h 127.0.0.1 kigali_heights_residence -e "SELECT reference, room_id, check_in, check_out, status FROM bookings ORDER BY id;"
+```
+
+---
+
+## 12. Project structure
+
+```text
+app/
+├─ api/
+│  ├─ availability/route.ts
+│  ├─ bookings/route.ts
+│  ├─ bookings/[reference]/route.ts
+│  ├─ contact/route.ts
+│  ├─ rooms/route.ts
+│  ├─ rooms/meta/route.ts
+│  ├─ rooms/[slug]/route.ts
+│  ├─ service-requests/route.ts
+│  └─ services/route.ts
+├─ about/, book/, contact/, credits/, discover/, explore/, rooms/, services/
+├─ layout.tsx, globals.css, error.tsx, not-found.tsx, loading.tsx, robots.ts
+components/
+├─ booking/booking-form.tsx
+├─ contact/contact-form.tsx
+├─ explore/alu-tour.tsx
+├─ home/
+├─ layout/
+├─ rooms/
+├─ services/
+└─ ui/
+database/schema.sql
+lib/
+├─ api-client.ts
+├─ db.ts
+├─ booking.ts
+├─ client-store.ts
+├─ utils.ts
+└─ server/
+   ├─ repository.ts
+   ├─ validation.ts
+   ├─ errors.ts
+   └─ http.ts
+scripts/init-db.mjs
+data/
+types/index.ts
+public/images/
+```
+
+---
+
+## 13. Deployment note
+
+This project is a design concept and a local full-stack study. Do not deploy it as a live hotel booking system without adding authentication, rate limiting, access controls, a real availability source, email delivery and a payment provider. The site currently sets `noindex` and disallows crawling.
