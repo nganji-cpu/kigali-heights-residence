@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LayoutGrid, X } from "lucide-react";
+import { X } from "lucide-react";
 import { RoomCard } from "@/components/rooms/room-card";
 import { NotFoundState } from "@/components/ui/not-found-state";
+import { StatusMessage } from "@/components/ui/status-message";
 import { categoryLabels, roomCategories } from "@/data/rooms";
 import { cn, pluralize } from "@/lib/utils";
 import type { Room, RoomCategory } from "@/types";
@@ -21,15 +22,8 @@ type LevelFilter = RoomLevel | "all";
 
 const levelOptions: LevelFilter[] = ["all", 2, 3, 4, 5];
 
-const levelDescriptions: Record<RoomLevel, string> = {
-  2: "Standard apartments",
-  3: "Deluxe apartments",
-  4: "Executive suites",
-  5: "Penthouse residence",
-};
-
 /**
- * Client-side accommodation browser.
+ * Client-side apartment browser.
  *
  * Filtering happens instantly in the browser from the full room list passed in
  * by the server. The URL is kept in sync with `history.replaceState` so a
@@ -68,12 +62,10 @@ export function RoomsBrowser({ rooms, initialCategory, initialLevel }: RoomsBrow
 
   return (
     <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-6 border border-stone/80 bg-white p-5 sm:p-6">
+      <div className="flex flex-col gap-5 border-y border-stone/80 py-5 sm:flex-row sm:items-start sm:gap-12">
         <div className="flex flex-col gap-3">
-          <span className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-charcoal/55">
-            Apartment type
-          </span>
-          <div className="flex flex-wrap gap-2">
+          <span className="text-[0.7rem] text-charcoal/70">Apartment type</span>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
             {roomCategories.map((option) => {
               const active = option.value === category;
               return (
@@ -83,24 +75,22 @@ export function RoomsBrowser({ rooms, initialCategory, initialLevel }: RoomsBrow
                   aria-pressed={active}
                   onClick={() => setCategory(option.value)}
                   className={cn(
-                    "border px-4 py-2.5 text-[0.72rem] font-medium uppercase tracking-[0.16em] transition-colors duration-300",
+                    "border-b pb-1 text-[0.78rem] font-medium transition-colors duration-300",
                     active
-                      ? "border-charcoal bg-charcoal text-ivory"
-                      : "border-stone/90 text-charcoal/75 hover:border-charcoal hover:text-charcoal",
+                      ? "border-bronze text-bronze"
+                      : "border-transparent text-charcoal/65 hover:text-charcoal",
                   )}
                 >
-                  {option.label}
+                  {option.value === "all" ? "All apartments" : option.label}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-stone/70 pt-6">
-          <span className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-charcoal/55">
-            Building level
-          </span>
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-3 sm:border-l sm:border-stone/70 sm:pl-12">
+          <span className="text-[0.7rem] text-charcoal/70">Building level</span>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
             {levelOptions.map((option) => {
               const active = option === level;
               return (
@@ -110,25 +100,13 @@ export function RoomsBrowser({ rooms, initialCategory, initialLevel }: RoomsBrow
                   aria-pressed={active}
                   onClick={() => setLevel(option)}
                   className={cn(
-                    "flex flex-col items-start border px-4 py-2.5 text-left transition-colors duration-300",
+                    "border-b pb-1 text-[0.78rem] font-medium transition-colors duration-300",
                     active
-                      ? "border-bronze bg-bronze/10"
-                      : "border-stone/90 hover:border-charcoal/40",
+                      ? "border-bronze text-bronze"
+                      : "border-transparent text-charcoal/65 hover:text-charcoal",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "text-[0.72rem] font-medium uppercase tracking-[0.16em]",
-                      active ? "text-bronze" : "text-charcoal/75",
-                    )}
-                  >
-                    {option === "all" ? "All levels" : `Level ${option}`}
-                  </span>
-                  <span className="text-[0.7rem] text-charcoal/50">
-                    {option === "all"
-                      ? "Across the residence"
-                      : levelDescriptions[option]}
-                  </span>
+                  {option === "all" ? "All levels" : `Level ${option}`}
                 </button>
               );
             })}
@@ -136,46 +114,51 @@ export function RoomsBrowser({ rooms, initialCategory, initialLevel }: RoomsBrow
         </div>
       </div>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <h2 className="flex items-center gap-2.5 font-display text-2xl">
-          <LayoutGrid aria-hidden="true" className="size-4 text-bronze" />
-          {results.length} {pluralize(results.length, "apartment")}
-          {category !== "all" ? ` · ${categoryLabels[category]}` : ""}
-          {level !== "all" ? ` · Level ${level}` : ""}
-        </h2>
-
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="inline-flex items-center gap-1.5 text-[0.72rem] font-medium uppercase tracking-[0.16em] text-charcoal/60 underline-offset-4 hover:text-bronze hover:underline"
-          >
-            <X aria-hidden="true" className="size-3.5" />
-            Clear filters
-          </button>
-        ) : (
-          <p className="text-[0.72rem] uppercase tracking-[0.16em] text-charcoal/45">
-            Rates are illustrative samples
-          </p>
-        )}
-      </div>
-
-      {results.length > 0 ? (
-        <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {results.map((room) => (
-            <li key={room.id} className="h-full">
-              <RoomCard room={room} />
-            </li>
-          ))}
-        </ul>
+      {rooms.length === 0 ? (
+        <StatusMessage tone="info" title="No apartments are available right now.">
+          Please check back soon, or read about the residence in the meantime.
+        </StatusMessage>
       ) : (
-        <NotFoundState
-          eyebrow="No match"
-          title="No apartments fit that combination."
-          description="Try a different apartment type or level the residence holds six apartments across levels two to five."
-          primary={{ href: "/rooms", label: "Reset the view" }}
-          secondary={{ href: "/book", label: "Reserve your stay" }}
-        />
+        <>
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className="font-display text-2xl">
+              {results.length} {pluralize(results.length, "apartment")}
+              {category !== "all" ? ` · ${categoryLabels[category]}` : ""}
+              {level !== "all" ? ` · Level ${level}` : ""}
+            </h2>
+
+            {hasFilters ? (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-1.5 text-[0.75rem] font-medium text-charcoal/70 underline-offset-4 hover:text-bronze hover:underline"
+              >
+                <X aria-hidden="true" className="size-3.5" />
+                Clear filters
+              </button>
+            ) : (
+              <p className="text-[0.75rem] text-charcoal/70">Rates per night, in USD</p>
+            )}
+          </div>
+
+          {results.length > 0 ? (
+            <ul className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+              {results.map((room) => (
+                <li key={room.id} className="h-full">
+                  <RoomCard room={room} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <NotFoundState
+              eyebrow="No match"
+              title="No apartments fit that combination."
+              description="Try another apartment type or level, or clear the filters to see all six apartments."
+              primary={{ href: "/rooms", label: "Reset the view" }}
+              secondary={{ href: "/book", label: "Reserve a stay" }}
+            />
+          )}
+        </>
       )}
     </div>
   );

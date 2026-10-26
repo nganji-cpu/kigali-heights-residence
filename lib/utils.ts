@@ -1,5 +1,5 @@
 /**
- * Small, dependency-free helpers shared across the prototype.
+ * Small, dependency-free helpers shared across the project.
  */
 
 /** Joins conditional class names. */

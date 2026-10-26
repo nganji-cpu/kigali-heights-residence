@@ -25,11 +25,11 @@ export function RoomGallery({ images, roomName }: RoomGalleryProps) {
           src={activeImage}
           alt={`${roomName} — view ${activeIndex + 1} of ${images.length}`}
           fill
-          priority
+          loading="eager"
           sizes="(min-width: 1024px) 62vw, 100vw"
           className="fade-in object-cover"
         />
-        <span className="absolute left-0 top-0 bg-ivory/92 px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.22em] text-charcoal backdrop-blur-sm">
+        <span className="absolute left-0 top-0 bg-ivory/92 px-3 py-2 text-[0.62rem] font-medium tracking-[0.01em] text-charcoal backdrop-blur-sm">
           {activeIndex + 1} / {images.length}
         </span>
       </div>

@@ -1,15 +1,18 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { RoomsBrowser } from "@/components/rooms/rooms-browser";
 import { ButtonLink } from "@/components/ui/button";
-import { isRoomCategory, rooms } from "@/data/rooms";
-import type { RoomCategory } from "@/types";
+import { StatusMessage } from "@/components/ui/status-message";
+import { isRoomCategory } from "@/data/rooms";
+import { listRooms } from "@/lib/server/repository";
+import type { Room, RoomCategory } from "@/types";
 
 export const metadata: Metadata = {
   title: "Apartments & suites",
   description:
-    "Six fictional apartment and suite concepts across five levels standard, deluxe, executive and penthouse. Illustrative sample rates shown.",
+    "Six apartments and suites across four guest floors, from a compact city apartment to the penthouse. A design concept for apartment living in Kigali, Rwanda.",
 };
 
 function parseCategory(value: string | string[] | undefined): RoomCategory | "all" {
@@ -47,6 +50,34 @@ async function RoomsResults({
   const category = parseCategory(params.category);
   const level = parseLevel(params.level);
 
+  await connection();
+
+  let rooms: Room[] = [];
+  try {
+    rooms = await listRooms({
+      category: category === "all" ? undefined : category,
+      level: level === "all" ? undefined : level,
+    });
+  } catch (error) {
+    console.error("Failed to load apartments from the database:", error);
+    return (
+      <div className="shell py-16 lg:py-20">
+        <StatusMessage
+          tone="error"
+          title="The apartments could not be loaded"
+          className="max-w-3xl"
+        >
+          Please try again in a moment. The rest of the residence is still available to explore.
+        </StatusMessage>
+        <div className="mt-6">
+          <ButtonLink href="/rooms" variant="secondary">
+            Try again
+          </ButtonLink>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="shell py-16 lg:py-20">
       <RoomsBrowser rooms={rooms} initialCategory={category} initialLevel={level} />
@@ -58,28 +89,15 @@ export default function RoomsPage({ searchParams }: PageProps<"/rooms">) {
   return (
     <>
       <PageHeader
-        eyebrow="Accommodation"
-        title={
-          <>
-            Six apartments, from a compact <em className="italic text-bronze">city studio</em> to
-            the penthouse.
-          </>
-        }
+        eyebrow="Apartments"
+        title="Six apartments, from a compact city home to the penthouse."
         description="Each apartment is a complete home rather than a room: cooking, working and living spaces arranged with intention. Filter by type or building level to compare them side by side."
         image={{
           src: "/images/lounge-modern.jpg",
           alt: "Contemporary apartment lounge with layered lighting",
         }}
-        meta={[
-          { label: "Apartments", value: "6 concepts" },
-          { label: "Levels", value: "2 – 5" },
-          { label: "Sleeps", value: "2 – 4 guests" },
-          { label: "Sizes", value: "42 – 145 m²" },
-          { label: "Rates", value: "Sample, in USD" },
-          { label: "Beds", value: "Queen to king" },
-        ]}
       >
-        <ButtonLink href="/book">Reserve your stay</ButtonLink>
+        <ButtonLink href="/book">Reserve a stay</ButtonLink>
         <ButtonLink href="/explore" variant="secondary">
           Explore by level
         </ButtonLink>
