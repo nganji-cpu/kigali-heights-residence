@@ -1,8 +1,8 @@
 /**
- * Brand + navigation configuration.
+ * Brand and navigation configuration.
  *
- * The brand name is provisional: change `name` here and it propagates through
- * the header, footer, metadata and page copy that references `siteConfig`.
+ * Change `name` here to rebrand the site across the header, footer, metadata
+ * and any page that references `siteConfig`.
  */
 
 /**
@@ -10,7 +10,7 @@
  *
  * With Cache Components enabled, calling `new Date()` while prerendering the
  * static shell is treated as synchronous IO and fails the build, so the year is
- * declared here instead. Update it when the concept is revised.
+ * declared here instead.
  */
 export const copyrightYear = 2026;
 
@@ -18,30 +18,13 @@ export const siteConfig = {
   name: "Kigali Heights Residence",
   shortName: "Kigali Heights",
   monogram: "KH",
-  /** Provisional brand line — intentionally not a registered trading name. */
   tagline: "Apartment hospitality in the hills of Kigali",
-  conceptLabel: "Concept prototype",
   conceptNotice:
-    "Kigali Heights Residence is a fictional concept for a design study. It is not a real operating property and nothing here represents real availability, verified pricing, or a completed booking.",
+    "Kigali Heights Residence is a design concept, not an operating property. The property, apartments, amenities, services, rates and availability are illustrative. Reservations do not hold a real apartment and no payment is taken.",
   location: {
     city: "Kigali",
     country: "Rwanda",
-    district: "Kacyiru (illustrative location)",
-    addressLine: "Concept address — not a real premises",
   },
-  contact: {
-    /** Demo-only contact details. */
-    phone: "+250 788 123 456",
-    phoneNote: "Demo number",
-    email: "hello@kigaliheights.example",
-    emailNote: "Demo address",
-    hours: "Concept concierge desk 24 hours",
-  },
-  social: [
-    { label: "Instagram", href: "https://instagram.com", handle: "@kigaliheightsresidence" },
-    { label: "LinkedIn", href: "https://linkedin.com", handle: "Kigali Heights Residence" },
-    { label: "X", href: "https://x.com", handle: "@kigaliheights" },
-  ],
 } as const;
 
 export interface NavItem {
@@ -51,12 +34,31 @@ export interface NavItem {
 }
 
 export const primaryNav: NavItem[] = [
-  { href: "/rooms", label: "Accommodation", description: "Six apartment and suite concepts across five levels" },
-  { href: "/explore", label: "Explore", description: "An interactive walkthrough of the five-level residence" },
-  { href: "/services", label: "Guest Services", description: "Transport, dining, laundry and business support" },
-  { href: "/discover", label: "Kigali", description: "City, culture and scenic experiences" },
-  { href: "/about", label: "About", description: "The concept, philosophy and architectural vision" },
-  { href: "/contact", label: "Contact", description: "Ask a question or request the concept deck" },
+  {
+    href: "/rooms",
+    label: "Apartments",
+    description: "Six apartments and suites across four guest floors",
+  },
+  {
+    href: "/about",
+    label: "Residence",
+    description: "The idea, the architecture and the way the building works",
+  },
+  {
+    href: "/explore",
+    label: "Explore",
+    description: "Move through the five levels, from lobby to rooftop",
+  },
+  {
+    href: "/services",
+    label: "Services",
+    description: "Transfers, private dining, laundry and business support",
+  },
+  {
+    href: "/contact",
+    label: "Contact",
+    description: "Ask about dates, a longer stay or anything else",
+  },
 ];
 
 export const footerNav: { title: string; items: { href: string; label: string }[] }[] = [
@@ -64,32 +66,18 @@ export const footerNav: { title: string; items: { href: string; label: string }[
     title: "Stay",
     items: [
       { href: "/rooms", label: "Apartments & suites" },
-      { href: "/rooms?category=penthouse", label: "Penthouse residence" },
-      { href: "/explore", label: "Explore the residence" },
-      { href: "/book", label: "Reserve your stay" },
-    ],
-  },
-  {
-    title: "Experience",
-    items: [
+      { href: "/book", label: "Reserve a stay" },
       { href: "/services", label: "Guest services" },
-      { href: "/discover", label: "Kigali experiences" },
-      { href: "/discover#dining", label: "Food & dining" },
-      { href: "/discover#business", label: "Business travel" },
+      { href: "/explore", label: "Explore the residence" },
     ],
   },
   {
-    title: "Concept",
+    title: "The residence",
     items: [
-      { href: "/about", label: "About the project" },
+      { href: "/about", label: "About" },
       { href: "/about#architecture", label: "Architecture" },
+      { href: "/discover", label: "Kigali & Rwanda" },
       { href: "/contact", label: "Contact" },
-      { href: "/credits", label: "Image credits" },
     ],
   },
 ];
-
-export const announcement = {
-  text: "A five-level apartment residence concept for Kigali, Rwanda",
-  link: { href: "/explore", label: "Explore the residence" },
-} as const;

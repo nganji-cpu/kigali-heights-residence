@@ -1,7 +1,7 @@
 /**
  * Image licence attributions.
  *
- * Every photograph used by the prototype is sourced from Wikimedia Commons and
+ * Every photograph used by the project is sourced from Wikimedia Commons and
  * is listed here with its author and licence. This file is generated from the
  * download manifest; regenerate it rather than editing by hand.
  */

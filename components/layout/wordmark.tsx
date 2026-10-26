@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { siteConfig } from "@/data/site";
 import { cn } from "@/lib/utils";
 
 interface WordmarkProps {
@@ -9,14 +8,13 @@ interface WordmarkProps {
   compact?: boolean;
 }
 
-/** Text-based brand mark. Change `siteConfig.name` to rebrand the prototype. */
+/** Text-based brand mark. Keep the visible name in sync with siteConfig.name. */
 export function Wordmark({ tone = "dark", className, compact = false }: WordmarkProps) {
   const isLight = tone === "light";
 
   return (
     <Link
       href="/"
-      aria-label={`${siteConfig.name} — home`}
       className={cn("group flex items-center gap-3", className)}
     >
       <span
@@ -42,8 +40,8 @@ export function Wordmark({ tone = "dark", className, compact = false }: Wordmark
         </span>
         <span
           className={cn(
-            "mt-1 text-[0.55rem] uppercase tracking-[0.34em]",
-            isLight ? "text-ivory/60" : "text-charcoal/50",
+            "mt-1 text-[0.62rem] tracking-[0.12em]",
+            isLight ? "text-ivory/60" : "text-charcoal/70",
           )}
         >
           Residence

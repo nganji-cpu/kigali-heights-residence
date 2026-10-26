@@ -12,9 +12,7 @@ export const experienceSections: ExperienceSection[] = [
     eyebrow: "The city",
     title: "A capital that unfolds across hills",
     description:
-      "Kigali is unusually easy to move through for a city of its size, and unusually green. Districts sit at different heights, so a ten-minute drive can change the whole view from the dense energy of Nyabugogo to the quiet residential streets of Kacyiru and Nyarutarama. Mornings are best spent on foot; afternoons are for the long, wide views.",
-    quote:
-      "Guests often say the first surprise is how calm it feels, and the second is how quickly they want to stay longer.",
+      "Kigali is unusually easy to move through for a city of its size, and unusually green. Districts sit at different heights, so a short drive can change the whole view, from the dense energy of Nyabugogo to the quieter residential streets of Kacyiru and Nyarutarama. Mornings are best spent on foot; afternoons are for the long, wide views.",
     images: [
       { src: "/images/kigali-hills.jpg", alt: "Green hills of Kigali seen from a viewpoint" },
       { src: "/images/kigali-city-street.jpg", alt: "Elevated view over a Kigali city street" },
@@ -38,9 +36,7 @@ export const experienceSections: ExperienceSection[] = [
     eyebrow: "Food & dining",
     title: "From market produce to a long evening table",
     description:
-      "Rwandan cooking is generous and seasonal: beans, plantain, cassava, tilapia from Lake Kivu, and coffee grown a few hours away. Contemporary kitchens in the city reinterpret those ingredients, and there is a strong café culture for the hours between meetings. Ask the concierge for the dishes best suited to your evening.",
-    quote:
-      "Brochettes, seasonal vegetables and a single-origin Rwandan coffee are a fair introduction to the country.",
+      "Rwandan cooking is generous and seasonal: beans, plantain, cassava, tilapia from Lake Kivu, and coffee grown a few hours away. Contemporary kitchens in the city reinterpret those ingredients, and there is a strong café culture for the hours between meetings. Brochettes, seasonal vegetables and a single-origin Rwandan coffee are a fair introduction to the country.",
     images: [
       { src: "/images/restaurant-interior.jpg", alt: "Warm restaurant interior set for dinner" },
       { src: "/images/coffee-shop.jpg", alt: "Coffee shop interior with counter seating" },
@@ -64,9 +60,7 @@ export const experienceSections: ExperienceSection[] = [
     eyebrow: "Business travel",
     title: "A working city with a growing calendar",
     description:
-      "Kigali hosts a steady rhythm of conferences, summits and regional meetings, and the convention district sits close to the main hotel and business corridors. Guests staying for work tend to value the quiet of a residential building, reliable connectivity, and a driver who knows the morning traffic patterns.",
-    quote:
-      "Most guests arrive for three days and add a weekend once they see how much is within reach.",
+      "Kigali hosts a steady rhythm of conferences, summits and regional meetings, and its convention district and business corridors are part of that working life. A residential building offers a quieter base: reliable connectivity, room to work and a driver who knows the morning traffic patterns.",
     images: [
       { src: "/images/service-conference.jpg", alt: "Minimalist meeting room with a long table" },
       { src: "/images/kigali-convention-centre.jpg", alt: "Kigali Convention Centre and surrounding city" },

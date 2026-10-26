@@ -14,9 +14,9 @@ interface SectionHeadingProps {
 }
 
 const sizes = {
-  md: "text-3xl sm:text-4xl lg:text-[2.75rem]",
-  lg: "text-4xl sm:text-5xl lg:text-6xl",
-  xl: "text-[2.6rem] leading-[1.05] sm:text-6xl lg:text-7xl",
+  md: "text-2xl sm:text-3xl lg:text-[2.25rem]",
+  lg: "text-3xl sm:text-4xl lg:text-[3.1rem]",
+  xl: "text-[2.35rem] leading-[1.08] sm:text-5xl lg:text-[3.5rem]",
 };
 
 export function SectionHeading({

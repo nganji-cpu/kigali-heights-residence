@@ -1,9 +1,8 @@
 # Image attributions
 
 All photography in `public/images` is sourced from [Wikimedia Commons](https://commons.wikimedia.org)
-and is used under the licence noted against each file. `Kigali Heights Residence` is a fictional
-concept prototype; these images are illustrative placeholders only and do not depict the property
-described.
+and is used under the licence noted against each file. `Kigali Heights Residence` is a design
+concept; these images are illustrative and do not depict the property described.
 
 - `images/apartment-block.jpg` — **Modern white apartment block in Sao Paulo.jpg** by Wilfredor (CC BY-SA 4.0). [Source](https://commons.wikimedia.org/wiki/File:Modern_white_apartment_block_in_Sao_Paulo.jpg)
 - `images/balcony-view.jpg` — **Sunrise view from an apartment balcony in Visakhapatnam.jpg** by Adityamadhav83 (CC BY-SA 4.0). [Source](https://commons.wikimedia.org/wiki/File:Sunrise_view_from_an_apartment_balcony_in_Visakhapatnam.jpg)

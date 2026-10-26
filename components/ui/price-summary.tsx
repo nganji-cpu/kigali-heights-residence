@@ -12,25 +12,22 @@ interface PriceSummaryProps {
 }
 
 /**
- * Itemised, illustrative price breakdown.
- *
- * Used on the booking page and inside the reservation review step. Every total
- * is a demonstration calculation, never a real quote.
+ * Itemised price breakdown used on apartment and booking pages. Totals are
+ * recalculated from the dates shown and are always presented as estimates.
  */
 export function PriceSummary({
   breakdown,
   title = "Estimated total",
   className,
   footer,
-  emptyMessage = "Choose an apartment and dates to see an estimate.",
+  emptyMessage = "Choose an apartment and dates to see a total.",
 }: PriceSummaryProps) {
   const hasContent = breakdown.lines.length > 0;
 
   return (
     <div className={cn("border border-stone/80 bg-white", className)}>
-      <div className="flex items-baseline justify-between gap-4 border-b border-stone/70 px-5 py-4">
+      <div className="border-b border-stone/70 px-5 py-4">
         <h3 className="font-display text-2xl">{title}</h3>
-        <span className="eyebrow text-charcoal/45">Sample</span>
       </div>
 
       {hasContent ? (
@@ -43,7 +40,7 @@ export function PriceSummary({
               <dt className="flex flex-col">
                 <span className="text-[0.92rem] text-charcoal">{line.label}</span>
                 {line.detail ? (
-                  <span className="text-[0.78rem] text-charcoal/50">{line.detail}</span>
+                  <span className="text-[0.78rem] text-charcoal/70">{line.detail}</span>
                 ) : null}
               </dt>
               <dd className="shrink-0 text-[0.92rem] tabular-nums text-charcoal">
@@ -53,12 +50,12 @@ export function PriceSummary({
           ))}
         </dl>
       ) : (
-        <p className="px-5 py-6 text-[0.9rem] text-charcoal/55">{emptyMessage}</p>
+        <p className="px-5 py-6 text-[0.9rem] text-charcoal/70">{emptyMessage}</p>
       )}
 
       <div className="flex flex-col gap-2 border-t border-stone/70 bg-ivory/70 px-5 py-5">
         <div className="flex items-baseline justify-between gap-4">
-          <span className="text-[0.72rem] uppercase tracking-[0.2em] text-charcoal/60">
+          <span className="text-[0.72rem] tracking-[0.01em] text-charcoal/70">
             {breakdown.nights > 0
               ? `${breakdown.nights} ${breakdown.nights === 1 ? "night" : "nights"}`
               : "No dates selected"}
@@ -67,7 +64,7 @@ export function PriceSummary({
             {formatUSD(breakdown.total)}
           </span>
         </div>
-        {footer ? <div className="pt-1 text-[0.78rem] leading-relaxed text-charcoal/55">{footer}</div> : null}
+        {footer ? <div className="pt-1 text-[0.78rem] leading-relaxed text-charcoal/70">{footer}</div> : null}
       </div>
     </div>
   );
