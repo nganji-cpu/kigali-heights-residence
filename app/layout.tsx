@@ -1,13 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
-import { AnnouncementBar } from "@/components/layout/announcement-bar";
+import { Inter, Newsreader } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { siteConfig } from "@/data/site";
 import "./globals.css";
 
 /**
- * Editorial serif for headlines and a clean sans for body copy. Both are
+ * A newspaper-ish serif for headlines and a clean sans for body copy. Both are
  * self-hosted by next/font, so no request leaves the deployment to render.
  */
 const inter = Inter({
@@ -16,21 +15,21 @@ const inter = Inter({
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
+const newsreader = Newsreader({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   style: ["normal", "italic"],
-  variable: "--font-cormorant",
+  variable: "--font-newsreader",
   display: "swap",
 });
 
 const description =
-  "Kigali Heights Residence is a fictional five-level apartment residence concept for Kigali, Rwanda a design study of apartment hospitality for business travellers and longer stays.";
+  "Six apartments with proper kitchens, quiet workspaces and a rooftop above Kigali, Rwanda. A design concept for a different kind of city stay.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kigaliheights.example"),
   title: {
-    default: `${siteConfig.name} — ${siteConfig.conceptLabel}`,
+    default: siteConfig.name,
     template: `%s · ${siteConfig.name}`,
   },
   description,
@@ -39,27 +38,27 @@ export const metadata: Metadata = {
     "Kigali",
     "Rwanda",
     "apartment residence",
-    "concept prototype",
-    "hospitality design study",
+    "serviced apartments",
+    "design concept",
   ],
-  authors: [{ name: `${siteConfig.name} (concept)` }],
+  authors: [{ name: siteConfig.name }],
   openGraph: {
     type: "website",
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — ${siteConfig.conceptLabel}`,
+    title: siteConfig.name,
     description,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} — ${siteConfig.conceptLabel}`,
+    title: siteConfig.name,
     description,
   },
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f4ee",
+  themeColor: "#f2eee6",
   colorScheme: "light",
 };
 
@@ -68,10 +67,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${inter.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${inter.variable} ${newsreader.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-ivory">
-        <AnnouncementBar />
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
