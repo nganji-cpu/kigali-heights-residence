@@ -45,7 +45,7 @@ export function ResidenceExplorer() {
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SplineStatus />
-          <p className="text-[0.68rem] uppercase tracking-[0.18em] text-charcoal/45">
+          <p className="text-[0.68rem] tracking-[0.01em] text-charcoal/70">
             Level {activeLevel} of 5
           </p>
         </div>
@@ -78,8 +78,8 @@ export function ResidenceExplorer() {
               >
                 <span
                   className={cn(
-                    "flex items-center gap-2 text-[0.66rem] font-medium uppercase tracking-[0.2em]",
-                    active ? "text-bronze" : "text-charcoal/50",
+                    "flex items-center gap-2 text-[0.66rem] font-medium tracking-[0.01em]",
+                    active ? "text-charcoal" : "text-charcoal/70",
                   )}
                 >
                   <Layers aria-hidden="true" className="size-3.5" />
@@ -116,7 +116,7 @@ export function ResidenceExplorer() {
               sizes="(min-width: 1024px) 40vw, 100vw"
               className="object-cover"
             />
-            <span className="absolute left-0 top-0 bg-charcoal/85 px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.22em] text-ivory backdrop-blur-sm">
+            <span className="absolute left-0 top-0 bg-charcoal/85 px-3 py-2 text-[0.62rem] font-medium tracking-[0.01em] text-ivory backdrop-blur-sm">
               Level {level.level} · {level.name}
             </span>
           </div>
@@ -139,7 +139,7 @@ export function ResidenceExplorer() {
 
           {levelRooms.length > 0 ? (
             <div className="flex flex-col gap-4 border-t border-stone/70 pt-6">
-              <h4 className="flex items-center gap-2 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-charcoal/60">
+              <h4 className="flex items-center gap-2 text-[0.7rem] font-medium tracking-[0.01em] text-charcoal/70">
                 <Building2 aria-hidden="true" className="size-3.5 text-bronze" />
                 {levelRooms.length} {pluralize(levelRooms.length, "apartment")} on this level
               </h4>
@@ -154,7 +154,7 @@ export function ResidenceExplorer() {
                         <span className="font-display text-xl leading-tight group-hover:text-bronze">
                           {room.name}
                         </span>
-                        <span className="flex items-center gap-2 text-[0.78rem] text-charcoal/55">
+                        <span className="flex items-center gap-2 text-[0.78rem] text-charcoal/70">
                           <Users aria-hidden="true" className="size-3.5" />
                           Sleeps {room.capacity} · {room.size} m²
                         </span>
@@ -163,7 +163,7 @@ export function ResidenceExplorer() {
                         <span className="block font-display text-lg">
                           {formatUSD(room.pricePerNight)}
                         </span>
-                        <span className="block text-[0.66rem] uppercase tracking-[0.16em] text-charcoal/45">
+                        <span className="block text-[0.66rem] tracking-[0.01em] text-charcoal/70">
                           per night
                         </span>
                       </span>
@@ -173,7 +173,7 @@ export function ResidenceExplorer() {
               </ul>
             </div>
           ) : (
-            <p className="border-t border-stone/70 pt-6 text-[0.88rem] leading-relaxed text-charcoal/60">
+            <p className="border-t border-stone/70 pt-6 text-[0.88rem] leading-relaxed text-charcoal/70">
               Level one holds the arrival experience rather than guest apartments reception, the
               concierge desk and the guest lounge.
             </p>
