@@ -5,9 +5,10 @@ import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { StatusMessage } from "@/components/ui/status-message";
+import { postJson } from "@/lib/api-client";
 import { hasErrors } from "@/lib/booking";
 
-type ContactErrors = Partial<Record<"name" | "email" | "message", string>>;
+type ContactErrors = Partial<Record<"name" | "email" | "subject" | "message", string>>;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
@@ -20,8 +21,8 @@ const subjects = [
 ];
 
 /**
- * Contact form with inline validation. Submission is simulated — the form
- * validates, shows a confirmation and resets, but sends nothing anywhere.
+ * Contact form. Messages are persisted through POST /api/contact and shown
+ * with an honest project-level disclosure instead of a simulated reply.
  */
 export function ContactForm() {
   const [values, setValues] = useState({
@@ -32,43 +33,67 @@ export function ContactForm() {
   });
   const [errors, setErrors] = useState<ContactErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   function validate(): ContactErrors {
     const next: ContactErrors = {};
     if (!values.name.trim()) next.name = "Please tell us your name.";
     if (!values.email.trim()) {
-      next.email = "An email address is required so we can reply.";
+      next.email = "An email address is required so the message can be recorded.";
     } else if (!EMAIL_PATTERN.test(values.email.trim())) {
       next.email = "Please enter a valid email address.";
     }
     if (!values.message.trim()) {
       next.message = "Please add a short message.";
     } else if (values.message.trim().length < 10) {
-      next.message = "A little more detail would help us respond well.";
+      next.message = "A little more detail would help.";
     }
     return next;
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const next = validate();
     setErrors(next);
+    setSubmitError(null);
+    setSentTo(null);
     if (hasErrors(next)) return;
 
     setSubmitting(true);
-    window.setTimeout(() => {
-      setSent(values.name.trim());
-      setSubmitting(false);
-      setValues({ name: "", email: "", subject: subjects[0].value, message: "" });
-    }, 600);
+    const result = await postJson<{ message: { id: number; receivedAt: string } }>(
+      "/api/contact",
+      {
+        name: values.name.trim(),
+        email: values.email.trim(),
+        subject: values.subject,
+        message: values.message.trim(),
+      },
+    );
+    setSubmitting(false);
+
+    if (!result.ok) {
+      setSubmitError(result.message);
+      if (result.fields) setErrors(result.fields as ContactErrors);
+      return;
+    }
+
+    setSentTo(values.name.trim());
+    setValues({ name: "", email: "", subject: subjects[0].value, message: "" });
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
-      {sent ? (
-        <StatusMessage tone="success" title={`Thanks, ${sent} — message received.`}>
-          This is a demonstration only. Nothing was sent, and no one will reply.
+      {sentTo ? (
+        <StatusMessage tone="success" title={`Thanks, ${sentTo} — your message has been saved.`}>
+          It is stored as part of this design concept. There is no live team monitoring this inbox,
+          so a reply is not guaranteed.
+        </StatusMessage>
+      ) : null}
+
+      {submitError ? (
+        <StatusMessage tone="error" title="Message not saved" live>
+          {submitError}
         </StatusMessage>
       ) : null}
 
@@ -95,7 +120,7 @@ export function ContactForm() {
         </Field>
       </div>
 
-      <Field id="contact-subject" label="Topic">
+      <Field id="contact-subject" label="Topic" error={errors.subject}>
         <Select
           id="contact-subject"
           value={values.subject}
@@ -114,18 +139,18 @@ export function ContactForm() {
           id="contact-message"
           value={values.message}
           invalid={Boolean(errors.message)}
-          placeholder="Tell us about your stay, dates or anything you would like help with."
+          placeholder="Tell us what you would like to know about the residence, the apartments or the design."
           onChange={(event) => setValues((value) => ({ ...value, message: event.target.value }))}
         />
       </Field>
 
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" size="lg" loading={submitting}>
-          {submitting ? "Sending" : "Send message"}
+          {submitting ? "Saving" : "Send message"}
           {!submitting ? <Send aria-hidden="true" className="size-4" /> : null}
         </Button>
-        <p className="text-[0.75rem] text-charcoal/50">
-          Demonstration form no message is actually delivered.
+        <p className="max-w-xs text-[0.75rem] leading-relaxed text-charcoal/70">
+          Messages are saved as part of this design concept. No payment or booking is created.
         </p>
       </div>
     </form>

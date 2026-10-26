@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Sparkles, Trash2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { ServiceCard } from "@/components/services/service-card";
 import { serviceCategoryLabels } from "@/data/services";
@@ -75,7 +74,7 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
   return (
     <div className="flex flex-col gap-8">
       {/* Category filter */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 border-y border-stone/80 py-4">
         {(["all", ...categoryOrder] as CategoryFilter[]).map((option) => {
           const active = option === category;
           const label = option === "all" ? "All services" : serviceCategoryLabels[option];
@@ -86,10 +85,10 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
               aria-pressed={active}
               onClick={() => setCategory(option)}
               className={cn(
-                "border px-4 py-2.5 text-[0.72rem] font-medium uppercase tracking-[0.16em] transition-colors duration-300",
+                "border-b pb-1 text-[0.78rem] font-medium transition-colors duration-300",
                 active
-                  ? "border-charcoal bg-charcoal text-ivory"
-                  : "border-stone/90 text-charcoal/75 hover:border-charcoal hover:text-charcoal",
+                  ? "border-bronze text-bronze"
+                  : "border-transparent text-charcoal/65 hover:text-charcoal",
               )}
             >
               {label}
@@ -100,7 +99,7 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
         {/* Cards */}
-        <ul className="grid gap-8 sm:grid-cols-2">
+        <ul className="grid gap-10 sm:grid-cols-2">
           {visible.map((service) => (
             <li key={service.id} className="h-full">
               <ServiceCard
@@ -116,11 +115,8 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
         <aside className="lg:sticky lg:top-28 lg:h-fit">
           <div className="flex flex-col gap-5 border border-stone/80 bg-white p-6">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 font-display text-2xl">
-                <Sparkles aria-hidden="true" className="size-4 text-bronze" />
-                My stay
-              </h2>
-              <span className="text-[0.68rem] uppercase tracking-[0.16em] text-charcoal/50">
+              <h2 className="font-display text-2xl">Your selection</h2>
+              <span className="text-[0.68rem] text-charcoal/70">
                 {selected.length} {pluralize(selected.length, "service")}
               </span>
             </div>
@@ -133,31 +129,26 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
                       key={service.id}
                       className="flex items-center justify-between gap-3 py-3 text-[0.88rem]"
                     >
-                      <span className="flex items-center gap-2 text-charcoal">
-                        <Check aria-hidden="true" className="size-3.5 text-bronze" />
-                        {service.name}
-                      </span>
-                      <span className="shrink-0 tabular-nums text-charcoal/60">
-                        from {formatUSD(service.samplePrice)}
+                      <span className="text-charcoal">{service.name}</span>
+                      <span className="shrink-0 tabular-nums text-charcoal/70">
+                        {formatUSD(service.samplePrice)}
                       </span>
                     </li>
                   ))}
                 </ul>
 
                 <p className="flex items-baseline justify-between gap-3">
-                  <span className="text-[0.72rem] uppercase tracking-[0.16em] text-charcoal/55">
-                    Sample add-on subtotal
-                  </span>
+                  <span className="text-[0.72rem] text-charcoal/70">Estimated services</span>
                   <span className="font-display text-2xl">{formatUSD(runningFrom)}</span>
                 </p>
 
-                <p className="text-[0.74rem] leading-relaxed text-charcoal/50">
+                <p className="text-[0.74rem] leading-relaxed text-charcoal/70">
                   Final amounts depend on nights and guests; the exact figure is calculated in the
                   reservation summary.
                 </p>
               </>
             ) : (
-              <p className="text-[0.88rem] leading-relaxed text-charcoal/60">
+              <p className="text-[0.88rem] leading-relaxed text-charcoal/70">
                 Nothing selected yet. Add the services you would like and they will carry through
                 to your reservation.
               </p>
@@ -165,15 +156,14 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
 
             <div className="flex flex-col gap-3">
               <ButtonLink href="/book" className="w-full">
-                Continue to reservation
+                Continue to reserve
               </ButtonLink>
               {selectedServices.length > 0 ? (
                 <button
                   type="button"
                   onClick={clear}
-                  className="inline-flex items-center justify-center gap-2 text-[0.72rem] font-medium uppercase tracking-[0.16em] text-charcoal/60 underline-offset-4 hover:text-bronze hover:underline"
+                  className="inline-flex items-center justify-center gap-2 text-[0.72rem] font-medium text-charcoal/70 underline-offset-4 hover:text-bronze hover:underline"
                 >
-                  <Trash2 aria-hidden="true" className="size-3.5" />
                   Clear selection
                 </button>
               ) : null}
@@ -187,7 +177,7 @@ export function ServicePlanner({ services }: ServicePlannerProps) {
                 justSaved ? "opacity-100" : "opacity-0",
               )}
             >
-              Saved to this browser.
+              Selection saved.
             </p>
           </div>
         </aside>
