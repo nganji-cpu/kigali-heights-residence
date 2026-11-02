@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { Wordmark } from "@/components/layout/wordmark";
+import { useSession } from "@/components/auth/use-session";
 import { primaryNav } from "@/data/site";
+import { postJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 function isActivePath(pathname: string, href: string): boolean {
@@ -17,7 +19,23 @@ function isActivePath(pathname: string, href: string): boolean {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useSession();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const accountHref = user?.role === "customer" ? "/dashboard" : "/admin";
+  const accountLabel = user?.role === "customer" ? "My account" : "Operations portal";
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    await postJson("/api/auth/logout", {});
+    setOpen(false);
+    router.push("/");
+    router.refresh();
+    setSigningOut(false);
+  }
 
   // Escape to close + lock background scrolling while the mobile menu is open.
   useEffect(() => {
@@ -72,6 +90,32 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <Link
+                href={accountHref}
+                className="hidden sm:inline-flex items-center px-3 py-2 text-[0.82rem] text-charcoal/75 transition-colors hover:text-charcoal"
+              >
+                {accountLabel}
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="hidden sm:inline-flex items-center px-3 py-2 text-[0.82rem] text-charcoal/75 transition-colors hover:text-charcoal disabled:opacity-45"
+              >
+                {signingOut ? "Signing out..." : "Sign out"}
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex items-center px-3 py-2 text-[0.82rem] text-charcoal/75 transition-colors hover:text-charcoal"
+            >
+              Sign in
+            </Link>
+          )}
+
           <ButtonLink href="/book" size="sm" className="hidden sm:inline-flex">
             Reserve
           </ButtonLink>
@@ -132,7 +176,42 @@ export function SiteHeader() {
             })}
           </ul>
 
-          <div className="mt-8">
+          <div className="mt-8 space-y-3">
+            {user ? (
+              <>
+                <ButtonLink
+                  href={accountHref}
+                  variant="secondary"
+                  size="lg"
+                  tabIndex={open ? undefined : -1}
+                  onClick={() => setOpen(false)}
+                  className="w-full"
+                >
+                  {accountLabel}
+                </ButtonLink>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  tabIndex={open ? undefined : -1}
+                  className="w-full border border-stone px-8 py-4 text-[0.88rem] text-charcoal/75 transition-colors hover:border-charcoal hover:text-charcoal disabled:opacity-45"
+                >
+                  {signingOut ? "Signing out..." : "Sign out"}
+                </button>
+              </>
+            ) : (
+              <ButtonLink
+                href="/login"
+                variant="secondary"
+                size="lg"
+                tabIndex={open ? undefined : -1}
+                onClick={() => setOpen(false)}
+                className="w-full"
+              >
+                Sign in
+              </ButtonLink>
+            )}
+
             <ButtonLink
               href="/book"
               size="lg"

@@ -15,6 +15,7 @@ import type {
   Room,
   RoomCategory,
   RoomMetaResponse,
+  RoomStatus,
   Service,
   ServiceCategory,
 } from "@/types";
@@ -42,6 +43,7 @@ interface RoomRow extends RowDataPacket {
   bedType: string;
   view: string;
   featured: number;
+  status: RoomStatus;
 }
 
 interface AmenityRow extends RowDataPacket {
@@ -86,6 +88,7 @@ interface ServiceRow extends RowDataPacket {
 interface BookingRow extends RowDataPacket {
   id: number;
   reference: string;
+  customerId: number | null;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -99,6 +102,8 @@ interface BookingRow extends RowDataPacket {
   total: number;
   status: BookingStatus;
   createdAt: string;
+  confirmedAt: string | null;
+  cancelledAt: string | null;
   roomSlug: string;
   roomName: string;
   category: RoomCategory;
@@ -137,7 +142,8 @@ const ROOM_SELECT = `
     r.size_sqm AS size,
     r.bed_type AS bedType,
     r.view_name AS view,
-    r.featured
+    r.featured,
+    r.status
   FROM rooms r
   JOIN apartments ap ON ap.id = r.apartment_id
 `;
@@ -161,6 +167,7 @@ const BOOKING_SELECT = `
   SELECT
     b.id,
     b.reference,
+    b.user_id AS customerId,
     b.check_in AS checkIn,
     b.check_out AS checkOut,
     b.guests,
@@ -174,6 +181,8 @@ const BOOKING_SELECT = `
     b.total,
     b.status,
     b.created_at AS createdAt,
+    b.confirmed_at AS confirmedAt,
+    b.cancelled_at AS cancelledAt,
     r.slug AS roomSlug,
     r.name AS roomName,
     r.category,
@@ -222,6 +231,7 @@ function mapRoom(row: RoomRow, amenities: string[], images: string[]): Room {
     amenities,
     images,
     featured: Boolean(row.featured),
+    status: row.status,
   };
 }
 
@@ -300,6 +310,8 @@ export interface ListRoomsOptions {
   guests?: number;
   featuredOnly?: boolean;
   limit?: number;
+  /** Admin views can include occupied, maintenance and inactive apartments. */
+  includeUnavailable?: boolean;
 }
 
 export async function listRooms(options: ListRoomsOptions = {}): Promise<Room[]> {
@@ -307,6 +319,9 @@ export async function listRooms(options: ListRoomsOptions = {}): Promise<Room[]>
   const where: string[] = [];
   const params: Array<string | number> = [];
 
+  if (!options.includeUnavailable) {
+    where.push("r.status = 'available'");
+  }
   if (options.category) {
     where.push("r.category = ?");
     params.push(options.category);
@@ -452,7 +467,7 @@ export async function checkAvailability(
 ): Promise<AvailabilityResult | null> {
   const pool = getPool();
   const [roomRows] = await pool.query<RoomRow[]>(
-    `SELECT r.id, r.slug, r.price_per_night AS pricePerNight, r.capacity
+    `SELECT r.id, r.slug, r.price_per_night AS pricePerNight, r.capacity, r.status
        FROM rooms r
       WHERE r.slug = ?
       LIMIT 1`,
@@ -466,7 +481,7 @@ export async function checkAvailability(
     `SELECT id
        FROM bookings
       WHERE room_id = ?
-        AND status = 'confirmed'
+        AND status IN ('pending', 'confirmed')
         AND check_in < ?
         AND check_out > ?
       LIMIT 1`,
@@ -475,7 +490,7 @@ export async function checkAvailability(
 
   return {
     roomSlug: room.slug,
-    available: conflicts.length === 0,
+    available: room.status === "available" && conflicts.length === 0,
     nights: calculateNights(checkIn, checkOut),
     pricePerNight: Number(room.pricePerNight),
     capacity: Number(room.capacity),
@@ -496,6 +511,7 @@ export interface CreateBookingData {
   phone: string;
   requests: string;
   serviceSlugs: string[];
+  userId: number;
 }
 
 function generateBookingReference(): string {
@@ -513,13 +529,13 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRec
     // Locking the room row serialises concurrent booking attempts for the same
     // room, so the overlap check and the insert cannot race.
     const [roomRows] = await connection.query<RoomRow[]>(
-      `${ROOM_SELECT} WHERE r.slug = ? LIMIT 1 FOR UPDATE`,
+      `${ROOM_SELECT} WHERE r.slug = ? AND r.status = 'available' LIMIT 1 FOR UPDATE`,
       [data.roomSlug],
     );
 
     const roomRow = roomRows[0];
     if (!roomRow) {
-      throw new ApiError(404, "ROOM_NOT_FOUND", "That apartment does not exist.");
+      throw new ApiError(404, "ROOM_NOT_FOUND", "That apartment does not exist or is not available.");
     }
 
     if (data.guests > Number(roomRow.capacity)) {
@@ -555,7 +571,7 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRec
       `SELECT id
          FROM bookings
         WHERE room_id = ?
-          AND status = 'confirmed'
+          AND status IN ('pending', 'confirmed')
           AND check_in < ?
           AND check_out > ?
         LIMIT 1`,
@@ -603,11 +619,12 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRec
 
     const [insertResult] = await connection.query<ResultSetHeader>(
       `INSERT INTO bookings
-        (reference, room_id, check_in, check_out, guests, guest_name, guest_email,
+        (reference, user_id, room_id, check_in, check_out, guests, guest_name, guest_email,
          guest_phone, requests, nights, room_total, services_total, total, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         reference,
+        data.userId,
         Number(roomRow.id),
         data.checkIn,
         data.checkOut,
@@ -629,7 +646,7 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRec
       await connection.query(
         `INSERT INTO booking_services
           (booking_id, service_id, quantity, unit_price, amount, status)
-         VALUES (?, ?, 1, ?, ?, 'confirmed')`,
+         VALUES (?, ?, 1, ?, ?, 'requested')`,
         [bookingId, Number(line.service.id), line.service.samplePrice, line.amount],
       );
     }
@@ -703,6 +720,42 @@ export async function listBookings(limit = 50): Promise<BookingRecord[]> {
   );
 }
 
+export async function getBookingForUser(
+  userId: number,
+  reference: string,
+): Promise<BookingRecord | null> {
+  const booking = await getBookingByReference(reference);
+  if (!booking || booking.customerId !== userId) return null;
+  return booking;
+}
+
+export async function listBookingsForUser(userId: number, limit = 50): Promise<BookingRecord[]> {
+  const pool = getPool();
+  const [rows] = await pool.query<BookingRow[]>(
+    `${BOOKING_SELECT} WHERE b.user_id = ? ORDER BY b.created_at DESC, b.id DESC LIMIT ?`,
+    [userId, limit],
+  );
+
+  if (rows.length === 0) return [];
+
+  const bookingIds = rows.map((row) => Number(row.id));
+  const [serviceRows] = await pool.query<BookingServiceRow[]>(
+    `${BOOKING_SERVICE_SELECT} WHERE bs.booking_id IN (?) ORDER BY bs.id ASC`,
+    [bookingIds],
+  );
+
+  const servicesByBooking = new Map<number, BookingServiceRow[]>();
+  for (const serviceRow of serviceRows) {
+    const list = servicesByBooking.get(Number(serviceRow.bookingId)) ?? [];
+    list.push(serviceRow);
+    servicesByBooking.set(Number(serviceRow.bookingId), list);
+  }
+
+  return rows.map((row) =>
+    mapBooking(row, servicesByBooking.get(Number(row.id)) ?? []),
+  );
+}
+
 function mapBooking(row: BookingRow, services: BookingServiceRow[]): BookingRecord {
   const roomTotal = Number(row.roomTotal);
   const servicesTotal = Number(row.servicesTotal);
@@ -730,6 +783,7 @@ function mapBooking(row: BookingRow, services: BookingServiceRow[]): BookingReco
   return {
     reference: row.reference,
     status: row.status,
+    customerId: row.customerId === null ? null : Number(row.customerId),
     checkIn: row.checkIn,
     checkOut: row.checkOut,
     nights,
@@ -764,6 +818,8 @@ function mapBooking(row: BookingRow, services: BookingServiceRow[]): BookingReco
       lines,
     },
     createdAt: row.createdAt,
+    confirmedAt: row.confirmedAt,
+    cancelledAt: row.cancelledAt,
   };
 }
 
@@ -796,7 +852,7 @@ export async function addServiceToBooking(
     if (!booking) {
       throw new ApiError(404, "BOOKING_NOT_FOUND", "No booking matches that reference.");
     }
-    if (booking.status !== "confirmed") {
+    if (booking.status !== "confirmed" && booking.status !== "pending") {
       throw new ApiError(409, "BOOKING_NOT_ACTIVE", "That booking is no longer active.");
     }
 
