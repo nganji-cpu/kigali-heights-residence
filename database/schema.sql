@@ -50,10 +50,15 @@ CREATE TABLE IF NOT EXISTS rooms (
   bed_type VARCHAR(120) NOT NULL,
   view_name VARCHAR(120) NOT NULL,
   featured TINYINT(1) NOT NULL DEFAULT 0,
+  -- Operational state for the admin dashboard. Public availability checks only
+  -- treat rooms marked 'available' as bookable.
+  status ENUM('available', 'occupied', 'maintenance', 'inactive')
+    NOT NULL DEFAULT 'available',
   PRIMARY KEY (id),
   UNIQUE KEY uq_rooms_slug (slug),
   KEY idx_rooms_category (category),
   KEY idx_rooms_floor (floor),
+  KEY idx_rooms_status (status),
   CONSTRAINT fk_rooms_apartment
     FOREIGN KEY (apartment_id) REFERENCES apartments (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -126,11 +131,61 @@ CREATE TABLE IF NOT EXISTS services (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
+-- Accounts, roles and database-backed sessions
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  full_name VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  phone VARCHAR(40) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('customer', 'admin', 'staff') NOT NULL DEFAULT 'customer',
+  status ENUM('active', 'inactive', 'suspended') NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_email (email),
+  KEY idx_users_role_status (role, status),
+  KEY idx_users_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_sessions_token (token_hash),
+  KEY idx_sessions_user (user_id),
+  KEY idx_sessions_expiry (expires_at),
+  CONSTRAINT fk_sessions_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Failed login tracking for database-backed rate limiting. Addresses are
+-- hashed so raw IP addresses are not retained.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  email VARCHAR(190) NOT NULL,
+  ip_hash CHAR(64) NOT NULL,
+  success TINYINT(1) NOT NULL DEFAULT 0,
+  attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_login_attempts_email (email, attempted_at),
+  KEY idx_login_attempts_ip (ip_hash, attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
 -- Bookings — totals are always calculated by the server.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS bookings (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   reference VARCHAR(32) NOT NULL,
+  -- Nullable so reservations created before accounts existed remain valid.
+  user_id INT UNSIGNED NULL,
   room_id INT UNSIGNED NOT NULL,
   check_in DATE NOT NULL,
   check_out DATE NOT NULL,
@@ -143,16 +198,22 @@ CREATE TABLE IF NOT EXISTS bookings (
   room_total DECIMAL(10, 2) NOT NULL,
   services_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
   total DECIMAL(10, 2) NOT NULL,
-  status ENUM('confirmed', 'cancelled') NOT NULL DEFAULT 'confirmed',
+  status ENUM('draft', 'pending', 'confirmed', 'cancelled') NOT NULL DEFAULT 'pending',
+  confirmed_at DATETIME NULL,
+  cancelled_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_bookings_reference (reference),
   KEY idx_bookings_room_dates (room_id, check_in, check_out, status),
+  KEY idx_bookings_user (user_id, created_at),
   KEY idx_bookings_created (created_at),
   CONSTRAINT fk_bookings_room
     FOREIGN KEY (room_id) REFERENCES rooms (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_bookings_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT chk_bookings_dates CHECK (check_out > check_in),
   CONSTRAINT chk_bookings_guests CHECK (guests BETWEEN 1 AND 6),
   CONSTRAINT chk_bookings_nights CHECK (nights >= 1),
@@ -181,6 +242,80 @@ CREATE TABLE IF NOT EXISTS booking_services (
     FOREIGN KEY (service_id) REFERENCES services (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_booking_services_amount CHECK (amount >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Reservation drafts — unfinished reservations, linked to the signed-in
+-- customer. A draft never reserves availability and is not a booking.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reservation_drafts (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  room_id INT UNSIGNED NULL,
+  check_in DATE NULL,
+  check_out DATE NULL,
+  guests TINYINT UNSIGNED NOT NULL DEFAULT 2,
+  guest_name VARCHAR(120) NULL,
+  guest_email VARCHAR(190) NULL,
+  guest_phone VARCHAR(40) NULL,
+  requests TEXT NULL,
+  current_step TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  room_price_snapshot DECIMAL(10, 2) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_reservation_drafts_user (user_id, updated_at),
+  KEY idx_reservation_drafts_room (room_id),
+  CONSTRAINT fk_reservation_drafts_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_reservation_drafts_room
+    FOREIGN KEY (room_id) REFERENCES rooms (id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT chk_reservation_drafts_step CHECK (current_step BETWEEN 0 AND 3),
+  CONSTRAINT chk_reservation_drafts_guests CHECK (guests BETWEEN 1 AND 6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS reservation_draft_services (
+  draft_id INT UNSIGNED NOT NULL,
+  service_id INT UNSIGNED NOT NULL,
+  price_snapshot DECIMAL(10, 2) NULL,
+  PRIMARY KEY (draft_id, service_id),
+  KEY idx_reservation_draft_services_service (service_id),
+  CONSTRAINT fk_reservation_draft_services_draft
+    FOREIGN KEY (draft_id) REFERENCES reservation_drafts (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_reservation_draft_services_service
+    FOREIGN KEY (service_id) REFERENCES services (id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Payments — recorded against a reservation. No card details are ever stored.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS payments (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  booking_id INT UNSIGNED NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  method ENUM('cash', 'bank_transfer', 'card', 'mobile_money', 'other')
+    NOT NULL DEFAULT 'bank_transfer',
+  status ENUM('pending', 'completed', 'failed', 'refunded') NOT NULL DEFAULT 'pending',
+  transaction_reference VARCHAR(120) NULL,
+  paid_at DATETIME NULL,
+  recorded_by_user_id INT UNSIGNED NULL,
+  notes VARCHAR(255) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_payments_booking (booking_id, status),
+  KEY idx_payments_paid_at (paid_at),
+  CONSTRAINT fk_payments_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_payments_recorded_by
+    FOREIGN KEY (recorded_by_user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT chk_payments_amount CHECK (amount >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------

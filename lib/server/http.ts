@@ -45,6 +45,42 @@ export async function readJson(request: Request): Promise<unknown> {
   }
 }
 
+/**
+ * Rejects state-changing requests whose Origin does not match this deployment.
+ *
+ * Browsers always send Origin on cross-site form/fetch requests, so this blocks
+ * CSRF while still allowing same-origin fetch calls and command-line clients
+ * that omit the header. Authentication is always checked separately.
+ */
+export function assertSameOrigin(request: Request): void {
+  const origin = request.headers.get("origin");
+  if (!origin) return;
+
+  let originHost: string;
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    throw new ApiError(403, "INVALID_ORIGIN", "That request origin is not allowed.");
+  }
+
+  const requestHost = request.headers.get("host") ?? new URL(request.url).host;
+  const configured = process.env.NEXT_PUBLIC_SITE_URL
+    ? safeHost(process.env.NEXT_PUBLIC_SITE_URL)
+    : null;
+
+  if (originHost !== requestHost && originHost !== configured) {
+    throw new ApiError(403, "INVALID_ORIGIN", "That request origin is not allowed.");
+  }
+}
+
+function safeHost(value: string): string | null {
+  try {
+    return new URL(value).host;
+  } catch {
+    return null;
+  }
+}
+
 export function jsonOk<T>(data: T, status = 200): NextResponse<T> {
   return NextResponse.json(data, {
     status,

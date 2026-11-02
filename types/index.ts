@@ -7,6 +7,8 @@
 
 export type RoomCategory = "standard" | "deluxe" | "executive" | "penthouse";
 
+export type RoomStatus = "available" | "occupied" | "maintenance" | "inactive";
+
 export interface Room {
   /** Stable identifier, e.g. "rm-standard-city" */
   id: string;
@@ -31,6 +33,8 @@ export interface Room {
   /** Image paths relative to /public, e.g. "/images/room-deluxe.jpg" */
   images: string[];
   featured: boolean;
+  /** Operational state; optional for the static editorial data. */
+  status?: RoomStatus;
 }
 
 export type PricingType =
@@ -140,8 +144,22 @@ export interface CreateBookingInput {
   serviceSlugs: string[];
 }
 
-export type BookingStatus = "confirmed" | "cancelled";
+export type BookingStatus = "draft" | "pending" | "confirmed" | "cancelled";
 export type BookingServiceStatus = "confirmed" | "requested" | "cancelled";
+
+export type UserRole = "customer" | "admin" | "staff";
+export type UserStatus = "active" | "inactive" | "suspended";
+
+/** Safe user shape returned by the session API and server components. */
+export interface AuthUser {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+}
 
 export interface BookingRoomSummary {
   slug: string;
@@ -163,6 +181,8 @@ export interface BookingServiceSummary {
 export interface BookingRecord {
   reference: string;
   status: BookingStatus;
+  /** Nullable for legacy reservations created before customer accounts. */
+  customerId: number | null;
   checkIn: string;
   checkOut: string;
   nights: number;
@@ -177,6 +197,123 @@ export interface BookingRecord {
   services: BookingServiceSummary[];
   price: PriceBreakdown;
   createdAt: string;
+  confirmedAt: string | null;
+  cancelledAt: string | null;
+}
+
+/** Unfinished reservation, stored in MySQL and owned by one customer. */
+export interface ReservationDraft {
+  id: number;
+  roomSlug: string | null;
+  roomName: string | null;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  requests: string;
+  currentStep: number;
+  serviceSlugs: string[];
+  updatedAt: string;
+}
+
+/** A clear explanation of anything that changed since the draft was saved. */
+export interface DraftWarning {
+  field: "room" | "dates" | "guests" | "services" | "price";
+  message: string;
+}
+
+export interface DraftResumeResult {
+  draft: ReservationDraft;
+  warnings: DraftWarning[];
+}
+
+export type PaymentMethod = "cash" | "bank_transfer" | "card" | "mobile_money" | "other";
+export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+
+export interface PaymentRecord {
+  id: number;
+  bookingReference: string;
+  amount: number;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  transactionReference: string;
+  paidAt: string | null;
+  recordedByName: string | null;
+  notes: string;
+  createdAt: string;
+}
+
+export interface AdminStats {
+  totalReservations: number;
+  pendingReservations: number;
+  confirmedReservations: number;
+  cancelledReservations: number;
+  availableRooms: number;
+  occupiedRooms: number;
+  registeredCustomers: number;
+  revenue: number;
+}
+
+export interface AdminReservationSummary {
+  reference: string;
+  status: BookingStatus;
+  customerId: number | null;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  roomName: string;
+  roomSlug: string;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  guests: number;
+  total: number;
+  paidTotal: number;
+  balance: number;
+  createdAt: string;
+}
+
+export interface AdminCustomerSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  status: UserStatus;
+  createdAt: string;
+  reservationCount: number;
+  totalSpent: number;
+}
+
+export interface AdminStaffSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+}
+
+export interface ReportPeriodRow {
+  period: string;
+  reservations: number;
+  revenue: number;
+}
+
+export interface RoomReportRow {
+  roomName: string;
+  reservations: number;
+  revenue: number;
+}
+
+export interface ReportSummary {
+  periodRows: ReportPeriodRow[];
+  statusRows: { status: BookingStatus; count: number }[];
+  revenue: number;
+  roomRows: RoomReportRow[];
+  customerRows: { label: string; value: number }[];
 }
 
 export interface RoomMetaResponse {

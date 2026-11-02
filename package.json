@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:init": "node scripts/init-db.mjs"
+    "db:init": "node scripts/init-db.mjs",
+    "db:migrate": "node scripts/migrate-db.mjs",
+    "admin:create": "node scripts/create-admin.mjs"
   },
   "dependencies": {
     "@splinetool/react-spline": "^4.1.0",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^1.55.0",
     "mysql2": "^3.24.6",
     "next": "16.4.3",
