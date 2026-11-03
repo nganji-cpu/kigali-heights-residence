@@ -3,19 +3,27 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { ConceptNotice } from "@/components/layout/concept-notice";
 import { PageHeader } from "@/components/layout/page-header";
-import { BookingForm, type BookingInitialSelection } from "@/components/booking/booking-form";
+import {
+  BookingForm,
+  type BookingDraftSeed,
+  type BookingInitialSelection,
+} from "@/components/booking/booking-form";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusMessage } from "@/components/ui/status-message";
 import { MAX_GUESTS } from "@/lib/booking";
+import { requirePageUser } from "@/lib/server/auth";
+import { getLatestDraftForUser, resumeDraft } from "@/lib/server/drafts";
 import { listRooms, listServices } from "@/lib/server/repository";
 import { clamp, parseISODate } from "@/lib/utils";
-import type { Room, Service } from "@/types";
+import type { AuthUser, Room, Service } from "@/types";
 
 export const metadata: Metadata = {
   title: "Reserve your stay",
   description:
     "Choose dates, an apartment and any guest services, then review the total before you reserve. A design concept for apartment living in Kigali, Rwanda.",
 };
+
+export const instant = false;
 
 function firstValue(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] : value) ?? "";
@@ -36,8 +44,42 @@ function parseInitial(
     roomSlug: room?.slug ?? null,
     checkIn: parseISODate(rawCheckIn) ? rawCheckIn : "",
     checkOut: parseISODate(rawCheckOut) ? rawCheckOut : "",
-    guests: Number.isFinite(guestsParam) && guestsParam >= 1 ? clamp(Math.round(guestsParam), 1, MAX_GUESTS) : 2,
+    guests:
+      Number.isFinite(guestsParam) && guestsParam >= 1
+        ? clamp(Math.round(guestsParam), 1, MAX_GUESTS)
+        : null,
   };
+}
+
+/** Re-checks the requested draft, or the most recent one, for this customer. */
+async function loadSavedDraft(
+  user: AuthUser,
+  requestedId: string,
+): Promise<BookingDraftSeed | null> {
+  let draftId: number | null = null;
+
+  if (/^\d+$/.test(requestedId)) {
+    draftId = Number(requestedId);
+  } else {
+    const latest = await getLatestDraftForUser(user.id);
+    draftId = latest?.id ?? null;
+  }
+
+  if (draftId === null) return null;
+
+  try {
+    const result = await resumeDraft(user.id, draftId);
+    return {
+      ...result.draft,
+      fullName: result.draft.fullName || user.fullName,
+      email: user.email,
+      phone: result.draft.phone || user.phone,
+      warnings: result.warnings,
+    };
+  } catch {
+    // A draft that was discarded in another tab should not block booking.
+    return null;
+  }
 }
 
 function BookingFallback() {
@@ -55,6 +97,7 @@ async function BookingContent({ searchParams }: Pick<PageProps<"/book">, "search
   const params = await searchParams;
 
   await connection();
+  const user = await requirePageUser();
 
   let rooms: Room[];
   let services: Service[];
@@ -96,10 +139,17 @@ async function BookingContent({ searchParams }: Pick<PageProps<"/book">, "search
   }
 
   const initial = parseInitial(params, rooms);
+  const savedDraft = await loadSavedDraft(user, firstValue(params.draft));
 
   return (
     <div className="shell py-16 lg:py-20">
-      <BookingForm initial={initial} rooms={rooms} services={services} />
+      <BookingForm
+        initial={initial}
+        rooms={rooms}
+        services={services}
+        customer={{ fullName: user.fullName, email: user.email, phone: user.phone }}
+        savedDraft={savedDraft}
+      />
     </div>
   );
 }

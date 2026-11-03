@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Plus } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -16,16 +16,17 @@ import {
   MAX_GUESTS,
   validateGuestDetails,
   validateStay,
-  writeBookingDraft,
 } from "@/lib/booking";
 import { postJson } from "@/lib/api-client";
-import { useBookingDraft, useSelectedServices, useToday } from "@/lib/client-store";
+import { useSelectedServices, useToday } from "@/lib/client-store";
 import { addDaysISO, cn, formatDateLong, formatUSD, pluralize } from "@/lib/utils";
 import type {
   BookingFormErrors,
   BookingFormValues,
   BookingRecord,
+  DraftWarning,
   PriceBreakdown,
+  ReservationDraft,
   Room,
   Service,
 } from "@/types";
@@ -34,13 +35,32 @@ export interface BookingInitialSelection {
   roomSlug: string | null;
   checkIn: string;
   checkOut: string;
+  guests: number | null;
+}
+
+/** A database draft plus the warnings raised when it was re-checked. */
+export interface BookingDraftSeed {
+  id: number;
+  roomSlug: string | null;
+  roomName: string | null;
+  checkIn: string;
+  checkOut: string;
   guests: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  requests: string;
+  currentStep: number;
+  serviceSlugs: string[];
+  warnings: DraftWarning[];
 }
 
 interface BookingFormProps {
   initial: BookingInitialSelection;
   rooms: Room[];
   services: Service[];
+  customer: { fullName: string; email: string; phone: string };
+  savedDraft: BookingDraftSeed | null;
 }
 
 interface ConfirmationSummary {
@@ -73,15 +93,22 @@ const steps = [
  * rejects overlapping confirmed bookings and calculates the stored total from
  * database prices. No payment details are requested.
  */
-export function BookingForm({ initial, rooms, services }: BookingFormProps) {
+export function BookingForm({
+  initial,
+  rooms,
+  services,
+  customer,
+  savedDraft,
+}: BookingFormProps) {
   const { roomSlug: initialRoom, checkIn: initialCheckIn, checkOut: initialCheckOut, guests: initialGuests } =
     initial;
 
   const today = useToday();
-  const draft = useBookingDraft();
   const storedServices = useSelectedServices();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() =>
+    savedDraft ? Math.min(Math.max(savedDraft.currentStep, 0), steps.length - 1) : 0,
+  );
   // Each field starts as `null` ("untouched"). Its value resolves through the
   // URL selection, then the saved draft, then a default that can only be known
   // in the browser. Nothing is written to state during render or effects.
@@ -89,22 +116,28 @@ export function BookingForm({ initial, rooms, services }: BookingFormProps) {
   const [checkOutOverride, setCheckOutOverride] = useState<string | null>(null);
   const [guestsOverride, setGuestsOverride] = useState<number | null>(null);
   const [roomOverride, setRoomOverride] = useState<string | null>(null);
-  const [servicesOverride, setServicesOverride] = useState<string[] | null>(null);
+  const [servicesOverride, setServicesOverride] = useState<string[] | null>(
+    savedDraft ? savedDraft.serviceSlugs : null,
+  );
   const [details, setDetails] = useState<BookingFormValues>({
-    fullName: "",
-    email: "",
-    phone: "",
-    requests: "",
+    fullName: savedDraft?.fullName || customer.fullName,
+    email: customer.email,
+    phone: savedDraft?.phone || customer.phone,
+    requests: savedDraft?.requests ?? "",
   });
   const [errors, setErrors] = useState<BookingFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationSummary | null>(null);
+  const [draftId, setDraftId] = useState<number | null>(savedDraft?.id ?? null);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const defaultCheckIn = initialCheckIn || draft.checkIn || (today ? addDaysISO(today, 14) : "");
-  const defaultCheckOut = initialCheckOut || draft.checkOut || (today ? addDaysISO(today, 17) : "");
-  const defaultGuests = initialGuests ?? (typeof draft.guests === "number" ? draft.guests : 2);
-  const defaultRoom = initialRoom ?? draft.roomSlug ?? null;
+  const defaultCheckIn =
+    initialCheckIn || savedDraft?.checkIn || (today ? addDaysISO(today, 14) : "");
+  const defaultCheckOut =
+    initialCheckOut || savedDraft?.checkOut || (today ? addDaysISO(today, 17) : "");
+  const defaultGuests = initialGuests ?? savedDraft?.guests ?? 2;
+  const defaultRoom = initialRoom ?? savedDraft?.roomSlug ?? null;
 
   const checkIn = checkInOverride ?? defaultCheckIn;
   const checkOut = checkOutOverride ?? defaultCheckOut;
@@ -131,10 +164,78 @@ export function BookingForm({ initial, rooms, services }: BookingFormProps) {
     [room, nights, guests, chosenServices],
   );
 
-  // Keep a draft so a refresh does not lose the selection.
+  // Autosave the unfinished reservation to the database. The first render is
+  // recorded as the baseline, so simply opening the form creates no draft and
+  // resuming one does not rewrite it until something actually changes.
+  const lastSavedRef = useRef<string | null>(null);
+  if (lastSavedRef.current === null) {
+    lastSavedRef.current = JSON.stringify({
+      roomSlug,
+      checkIn,
+      checkOut,
+      guests,
+      fullName: details.fullName,
+      email: customer.email,
+      phone: details.phone,
+      requests: details.requests,
+      currentStep: step,
+      serviceSlugs: selectedSlugs,
+    });
+  }
+
   useEffect(() => {
-    writeBookingDraft({ checkIn, checkOut, guests, roomSlug, services: selectedSlugs });
-  }, [checkIn, checkOut, guests, roomSlug, selectedSlugs]);
+    const snapshot = JSON.stringify({
+      roomSlug,
+      checkIn,
+      checkOut,
+      guests,
+      fullName: details.fullName,
+      email: customer.email,
+      phone: details.phone,
+      requests: details.requests,
+      currentStep: step,
+      serviceSlugs: selectedSlugs,
+    });
+
+    if (snapshot === lastSavedRef.current) return;
+
+    const timer = setTimeout(async () => {
+      setDraftStatus("saving");
+      const result = await postJson<{ draft: ReservationDraft }>("/api/drafts", {
+        id: draftId,
+        roomSlug,
+        checkIn,
+        checkOut,
+        guests,
+        fullName: details.fullName.trim(),
+        email: customer.email,
+        phone: details.phone.trim(),
+        requests: details.requests.trim(),
+        currentStep: step,
+        serviceSlugs: selectedSlugs,
+      });
+
+      if (result.ok) {
+        lastSavedRef.current = snapshot;
+        setDraftId(result.data.draft.id);
+        setDraftStatus("saved");
+      } else {
+        setDraftStatus("error");
+      }
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [
+    roomSlug,
+    checkIn,
+    checkOut,
+    guests,
+    details,
+    step,
+    selectedSlugs,
+    draftId,
+    customer.email,
+  ]);
 
   const stayErrors = useMemo(
     () => validateStay({ checkIn, checkOut, guests, room, today }),
@@ -240,7 +341,11 @@ export function BookingForm({ initial, rooms, services }: BookingFormProps) {
       total: booking.price.total,
       breakdown: booking.price,
     });
-    writeBookingDraft({});
+    // The reservation now exists, so the unfinished draft is no longer needed.
+    if (draftId !== null) {
+      void fetch(`/api/drafts/${draftId}`, { method: "DELETE" }).catch(() => undefined);
+    }
+    setDraftStatus("idle");
     setSubmitting(false);
   }
 
@@ -248,7 +353,14 @@ export function BookingForm({ initial, rooms, services }: BookingFormProps) {
     setConfirmation(null);
     setSubmitError(null);
     setStep(0);
-    setDetails({ fullName: "", email: "", phone: "", requests: "" });
+    setDetails({
+      fullName: customer.fullName,
+      email: customer.email,
+      phone: customer.phone,
+      requests: "",
+    });
+    setDraftId(null);
+    setDraftStatus("idle");
     setErrors({});
   }
 
@@ -351,6 +463,44 @@ export function BookingForm({ initial, rooms, services }: BookingFormProps) {
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-12">
       <div className="flex flex-col gap-8">
+        {savedDraft && savedDraft.warnings.length > 0 ? (
+          <StatusMessage
+            tone="info"
+            title="Some details changed since this draft was saved"
+            className="max-w-3xl"
+          >
+            <ul className="flex list-disc flex-col gap-1.5 pl-4">
+              {savedDraft.warnings.map((warning) => (
+                <li key={`${warning.field}-${warning.message}`}>{warning.message}</li>
+              ))}
+            </ul>
+          </StatusMessage>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-[0.72rem] text-charcoal/60">
+            {draftId === null && draftStatus === "idle"
+              ? "Your progress will be saved to your account as you go."
+              : draftStatus === "saving"
+                ? "Saving draft…"
+                : draftStatus === "saved"
+                  ? "Draft saved to your account."
+                  : draftStatus === "error"
+                    ? "Draft could not be saved. Your details are still here."
+                    : savedDraft
+                      ? "Resumed from a saved draft."
+                      : null}
+          </p>
+          {savedDraft ? (
+            <Link
+              href="/dashboard/drafts"
+              className="shrink-0 text-[0.72rem] text-charcoal/60 underline-offset-4 hover:text-bronze hover:underline"
+            >
+              All saved drafts
+            </Link>
+          ) : null}
+        </div>
+
         {/* Step indicator */}
         <ol className="grid grid-cols-2 border-y border-stone/80 sm:grid-cols-4">
           {steps.map((item, index) => {
@@ -594,12 +744,21 @@ export function BookingForm({ initial, rooms, services }: BookingFormProps) {
                     onChange={(event) => setDetails((value) => ({ ...value, fullName: event.target.value }))}
                   />
                 </Field>
-                <Field id="book-email" label="Email" required error={errors.email}>
+                <Field
+                  id="book-email"
+                  label="Account email"
+                  hint="Used for confirmation"
+                  required
+                  error={errors.email}
+                >
                   <Input
                     id="book-email"
                     type="email"
                     value={details.email}
                     autoComplete="email"
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-stone/15"
                     invalid={Boolean(errors.email)}
                     onChange={(event) => setDetails((value) => ({ ...value, email: event.target.value }))}
                   />

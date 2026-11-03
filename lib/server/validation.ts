@@ -271,3 +271,429 @@ export function parseReferenceParam(value: string): string {
   }
   return reference;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Accounts, drafts and administration                                        */
+/* ------------------------------------------------------------------------- */
+
+const MAX_PASSWORD_LENGTH = 128;
+const MIN_PASSWORD_LENGTH = 10;
+
+function readObjectField(input: Record<string, unknown>, key: string): string {
+  return readString(input[key]).trim();
+}
+
+function throwValidation(fields: Record<string, string>, message: string): never {
+  throw new ApiError(422, "VALIDATION_ERROR", message, fields);
+}
+
+function validateEmail(value: string, fields: Record<string, string>, field = "email"): void {
+  if (!value) {
+    fields[field] = "An email address is required.";
+  } else if (!EMAIL_PATTERN.test(value) || value.length > MAX_EMAIL_LENGTH) {
+    fields[field] = "Please enter a valid email address.";
+  }
+}
+
+function validatePhone(value: string, fields: Record<string, string>, field = "phone"): void {
+  if (!value) {
+    fields[field] = "A contact number is required.";
+  } else if (!PHONE_PATTERN.test(value) || value.length > MAX_PHONE_LENGTH) {
+    fields[field] = "Please enter a valid phone number.";
+  }
+}
+
+function validateName(value: string, fields: Record<string, string>, field = "fullName"): void {
+  if (!value) {
+    fields[field] = "Please enter your full name.";
+  } else if (value.length < 2) {
+    fields[field] = "That name looks too short.";
+  } else if (value.length > MAX_NAME_LENGTH) {
+    fields[field] = `Names must be ${MAX_NAME_LENGTH} characters or fewer.`;
+  }
+}
+
+function validatePassword(value: string, fields: Record<string, string>, field = "password"): void {
+  if (!value) {
+    fields[field] = "A password is required.";
+  } else if (value.length < MIN_PASSWORD_LENGTH) {
+    fields[field] = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+  } else if (value.length > MAX_PASSWORD_LENGTH) {
+    fields[field] = `Passwords must be ${MAX_PASSWORD_LENGTH} characters or fewer.`;
+  } else if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+    fields[field] = "Include at least one letter and one number.";
+  }
+}
+
+export interface RegisterInput {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+/** Validates POST /api/auth/register. The role is deliberately not accepted. */
+export function parseRegisterBody(body: unknown): RegisterInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+
+  const fullName = readObjectField(input, "fullName");
+  const email = readObjectField(input, "email").toLowerCase();
+  const phone = readObjectField(input, "phone");
+  const password = readString(input.password);
+
+  validateName(fullName, fields);
+  validateEmail(email, fields);
+  validatePhone(phone, fields);
+  validatePassword(password, fields);
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return { fullName, email, phone, password };
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+/** Validates POST /api/auth/login. */
+export function parseLoginBody(body: unknown): LoginInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+  const email = readObjectField(input, "email").toLowerCase();
+  const password = readString(input.password);
+
+  validateEmail(email, fields);
+  if (!password) fields.password = "Please enter your password.";
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return { email, password };
+}
+
+export interface ProfileInput {
+  fullName: string;
+  email: string;
+  phone: string;
+}
+
+/** Validates PATCH /api/account/profile. */
+export function parseProfileBody(body: unknown): ProfileInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+  const fullName = readObjectField(input, "fullName");
+  const email = readObjectField(input, "email").toLowerCase();
+  const phone = readObjectField(input, "phone");
+
+  validateName(fullName, fields);
+  validateEmail(email, fields);
+  validatePhone(phone, fields);
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return { fullName, email, phone };
+}
+
+export interface PasswordChangeInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** Validates POST /api/account/password. */
+export function parsePasswordChangeBody(body: unknown): PasswordChangeInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+  const currentPassword = readString(input.currentPassword);
+  const newPassword = readString(input.newPassword);
+
+  if (!currentPassword) fields.currentPassword = "Enter your current password.";
+  validatePassword(newPassword, fields, "newPassword");
+  if (currentPassword && newPassword && currentPassword === newPassword) {
+    fields.newPassword = "Choose a password you have not already used here.";
+  }
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return { currentPassword, newPassword };
+}
+
+export interface DraftInput {
+  id: number | null;
+  roomSlug: string | null;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  requests: string;
+  currentStep: number;
+  serviceSlugs: string[];
+}
+
+/**
+ * Validates POST /api/drafts. Drafts may be incomplete, so dates and the room
+ * are optional, but anything supplied must still be well formed.
+ */
+export function parseDraftBody(body: unknown): DraftInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+
+  const rawId = input.id;
+  const id =
+    rawId === undefined || rawId === null || rawId === ""
+      ? null
+      : Number.parseInt(String(rawId), 10);
+  if (id !== null && (!Number.isFinite(id) || id < 1)) {
+    fields.id = "That draft identifier is not valid.";
+  }
+
+  const roomSlug = readObjectField(input, "roomSlug") || null;
+  const checkIn = readObjectField(input, "checkIn");
+  const checkOut = readObjectField(input, "checkOut");
+  const fullName = readString(input.fullName).trim();
+  const email = readObjectField(input, "email").toLowerCase();
+  const phone = readString(input.phone).trim();
+  const requests = readString(input.requests).trim();
+
+  if (roomSlug && roomSlug.length > 80) fields.roomSlug = "That apartment is not valid.";
+  if (checkIn && !isValidISODate(checkIn)) fields.checkIn = "Please choose a valid arrival date.";
+  if (checkOut && !isValidISODate(checkOut)) fields.checkOut = "Please choose a valid departure date.";
+  if (checkIn && checkOut && checkOut <= checkIn) {
+    fields.checkOut = "Departure must be after arrival.";
+  }
+
+  const rawGuests = input.guests;
+  const guests =
+    rawGuests === undefined || rawGuests === null
+      ? 2
+      : typeof rawGuests === "number"
+        ? Math.trunc(rawGuests)
+        : Number.parseInt(String(rawGuests), 10);
+  if (!Number.isFinite(guests) || guests < 1 || guests > 6) {
+    fields.guests = "Guests must be between 1 and 6.";
+  }
+
+  if (fullName && fullName.length < 2) fields.fullName = "That name looks too short.";
+  if (fullName.length > MAX_NAME_LENGTH) {
+    fields.fullName = `Names must be ${MAX_NAME_LENGTH} characters or fewer.`;
+  }
+  if (email && (!EMAIL_PATTERN.test(email) || email.length > MAX_EMAIL_LENGTH)) {
+    fields.email = "Please enter a valid email address.";
+  }
+  if (phone && (!PHONE_PATTERN.test(phone) || phone.length > MAX_PHONE_LENGTH)) {
+    fields.phone = "Please enter a valid phone number.";
+  }
+  if (requests.length > MAX_REQUESTS_LENGTH) {
+    fields.requests = `Please keep requests under ${MAX_REQUESTS_LENGTH} characters.`;
+  }
+
+  const rawStep = input.currentStep;
+  const currentStep =
+    rawStep === undefined || rawStep === null ? 0 : Number.parseInt(String(rawStep), 10);
+  if (!Number.isFinite(currentStep) || currentStep < 0 || currentStep > 3) {
+    fields.currentStep = "That step is not valid.";
+  }
+
+  const rawServices = input.serviceSlugs;
+  let serviceSlugs: string[] = [];
+  if (rawServices !== undefined) {
+    if (!Array.isArray(rawServices)) {
+      fields.serviceSlugs = "Guest services must be a list.";
+    } else {
+      serviceSlugs = Array.from(
+        new Set(
+          rawServices
+            .filter((item): item is string => typeof item === "string")
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      );
+      if (serviceSlugs.length > MAX_SERVICES) {
+        fields.serviceSlugs = "Too many guest services were selected.";
+      }
+    }
+  }
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return {
+    id,
+    roomSlug,
+    checkIn,
+    checkOut,
+    guests,
+    fullName,
+    email,
+    phone,
+    requests,
+    currentStep,
+    serviceSlugs,
+  };
+}
+
+export const RESERVATION_STATUSES = ["pending", "confirmed", "cancelled"] as const;
+export type AdminReservationStatus = (typeof RESERVATION_STATUSES)[number];
+
+/** Validates PATCH /api/admin/reservations/[reference]. */
+export function parseReservationStatusBody(body: unknown): AdminReservationStatus {
+  const input = asRecord(body);
+  const status = readString(input.status).trim();
+  if (!RESERVATION_STATUSES.includes(status as AdminReservationStatus)) {
+    throwValidation(
+      { status: "Choose pending, confirmed or cancelled." },
+      "Please choose a valid reservation status.",
+    );
+  }
+  return status as AdminReservationStatus;
+}
+
+export const ROOM_STATUSES = ["available", "occupied", "maintenance", "inactive"] as const;
+export type AdminRoomStatus = (typeof ROOM_STATUSES)[number];
+
+/** Validates PATCH /api/admin/rooms/[slug]. */
+export function parseRoomStatusBody(body: unknown): AdminRoomStatus {
+  const input = asRecord(body);
+  const status = readString(input.status).trim();
+  if (!ROOM_STATUSES.includes(status as AdminRoomStatus)) {
+    throwValidation(
+      { status: "Choose available, occupied, maintenance or inactive." },
+      "Please choose a valid room status.",
+    );
+  }
+  return status as AdminRoomStatus;
+}
+
+export const PAYMENT_METHODS = ["cash", "bank_transfer", "card", "mobile_money", "other"] as const;
+export const PAYMENT_STATUSES = ["pending", "completed", "failed", "refunded"] as const;
+
+export interface PaymentInput {
+  bookingReference: string;
+  amount: number;
+  method: (typeof PAYMENT_METHODS)[number];
+  status: (typeof PAYMENT_STATUSES)[number];
+  transactionReference: string;
+  paidAt: string | null;
+  notes: string;
+}
+
+/** Validates POST /api/admin/payments. */
+export function parsePaymentBody(body: unknown): PaymentInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+
+  const bookingReference = readObjectField(input, "bookingReference").toUpperCase();
+  if (!/^KHR-[A-Z0-9]{4,20}$/.test(bookingReference)) {
+    fields.bookingReference = "Enter a valid booking reference.";
+  }
+
+  const rawAmount = input.amount;
+  const amount =
+    typeof rawAmount === "number" ? rawAmount : Number.parseFloat(String(rawAmount ?? ""));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    fields.amount = "Enter an amount greater than zero.";
+  } else if (amount > 1_000_000) {
+    fields.amount = "That amount is too large.";
+  }
+
+  const method = readObjectField(input, "method");
+  if (!PAYMENT_METHODS.includes(method as (typeof PAYMENT_METHODS)[number])) {
+    fields.method = "Choose a payment method.";
+  }
+
+  const status = readObjectField(input, "status") || "completed";
+  if (!PAYMENT_STATUSES.includes(status as (typeof PAYMENT_STATUSES)[number])) {
+    fields.status = "Choose a payment status.";
+  }
+
+  const transactionReference = readObjectField(input, "transactionReference");
+  if (transactionReference.length > 120) {
+    fields.transactionReference = "Keep the transaction reference under 120 characters.";
+  }
+
+  const rawPaidAt = readObjectField(input, "paidAt");
+  if (rawPaidAt && !/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(rawPaidAt)) {
+    fields.paidAt = "Enter a valid payment date.";
+  }
+
+  const notes = readString(input.notes).trim();
+  if (notes.length > 255) fields.notes = "Keep notes under 255 characters.";
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return {
+    bookingReference,
+    amount: Math.round(amount * 100) / 100,
+    method: method as PaymentInput["method"],
+    status: status as PaymentInput["status"],
+    transactionReference,
+    paidAt: rawPaidAt || null,
+    notes,
+  };
+}
+
+export interface StaffCreateInput {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+/** Validates POST /api/admin/staff. Only the `staff` role can be created here. */
+export function parseStaffBody(body: unknown): StaffCreateInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+  const fullName = readObjectField(input, "fullName");
+  const email = readObjectField(input, "email").toLowerCase();
+  const phone = readObjectField(input, "phone");
+  const password = readString(input.password);
+
+  validateName(fullName, fields);
+  validateEmail(email, fields);
+  validatePhone(phone, fields);
+  validatePassword(password, fields);
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please check the highlighted fields and try again.");
+  }
+
+  return { fullName, email, phone, password };
+}
+
+export const STAFF_STATUSES = ["active", "inactive", "suspended"] as const;
+export type StaffStatus = (typeof STAFF_STATUSES)[number];
+
+/** Validates PATCH /api/admin/staff/[id]. */
+export function parseStaffStatusBody(body: unknown): StaffStatus {
+  const input = asRecord(body);
+  const status = readString(input.status).trim();
+  if (!STAFF_STATUSES.includes(status as StaffStatus)) {
+    throwValidation(
+      { status: "Choose active, inactive or suspended." },
+      "Please choose a valid account status.",
+    );
+  }
+  return status as StaffStatus;
+}
+
+/** Parses a positive numeric identifier taken from a URL. */
+export function parseIdParam(value: string): number {
+  const id = Number.parseInt(value, 10);
+  if (!Number.isFinite(id) || id < 1 || String(id) !== value.trim()) {
+    throw new ApiError(400, "INVALID_ID", "That identifier is not valid.");
+  }
+  return id;
+}
