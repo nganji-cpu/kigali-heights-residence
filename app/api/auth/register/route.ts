@@ -3,6 +3,7 @@ import { createUser, findUserByEmail } from "@/lib/server/accounts";
 import { hashPassword, startSession } from "@/lib/server/auth";
 import { ApiError } from "@/lib/server/errors";
 import { assertSameOrigin, errorResponse, jsonOk, readJson } from "@/lib/server/http";
+import { notifyAdminNewCustomer, notifyWelcome, runInBackground } from "@/lib/server/notifications";
 import { parseRegisterBody } from "@/lib/server/validation";
 
 /**
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
     });
 
     await startSession(user.id);
+    runInBackground(() => Promise.all([notifyWelcome(user), notifyAdminNewCustomer(user)]));
     return jsonOk({ user }, 201);
   } catch (error) {
     return errorResponse(error);

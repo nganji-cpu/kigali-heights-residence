@@ -1,6 +1,12 @@
 import "server-only";
+import { after } from "next/server";
 import type { AuthUser, BookingRecord, PaymentRecord } from "@/types";
-import { sendEmail, type EmailSendResult } from "./email";
+import {
+  getAdminNotificationAddress,
+  sendEmail,
+  type EmailMessage,
+  type EmailSendResult,
+} from "./email";
 import {
   adminNewCustomerTemplate,
   adminNewMessageTemplate,
@@ -12,10 +18,8 @@ import {
   paymentReceiptTemplate,
   welcomeTemplate,
 } from "./email-templates";
-import {
-  getBookingByReference,
-  listPaymentsForBooking,
-} from "./repository";
+import { listPaymentsForBooking } from "./admin";
+import { getBookingByReference } from "./repository";
 import type { ContactMessageInput } from "./validation";
 
 /**
@@ -35,6 +39,31 @@ function siteBaseUrl(): string {
   return configured.replace(/\/+$/, "");
 }
 
+/**
+ * Runs a notification after the HTTP response has been sent. Failures are
+ * logged and never surface to the caller, so email can never break a booking,
+ * payment or sign-up.
+ */
+export function runInBackground(task: () => Promise<unknown>): void {
+  after(async () => {
+    try {
+      await task();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Unknown error";
+      console.warn(`[notifications] Background task failed: ${reason}`);
+    }
+  });
+}
+
+/** Sends an operational alert to the configured admin inbox. */
+async function sendToAdmin(
+  message: Omit<EmailMessage, "to">,
+): Promise<EmailSendResult> {
+  const to = getAdminNotificationAddress();
+  if (!to) return { ok: false, skipped: true, error: "not_configured" };
+  return sendEmail({ to, ...message });
+}
+
 export function siteUrl(path = ""): string {
   const normalised = path.startsWith("/") ? path : `/${path}`;
   return `${siteBaseUrl()}${normalised}`;
@@ -52,8 +81,7 @@ export async function notifyWelcome(user: AuthUser): Promise<EmailSendResult> {
 }
 
 export async function notifyAdminNewCustomer(user: AuthUser): Promise<EmailSendResult> {
-  return sendEmail({
-    subject: `New customer · ${user.fullName}`,
+  return sendToAdmin({
     ...adminNewCustomerTemplate({
       fullName: user.fullName,
       email: user.email,
@@ -116,7 +144,7 @@ export async function notifyBookingReceived(booking: BookingRecord): Promise<Ema
     }),
   });
 
-  const adminMessage = sendEmail({
+  const adminMessage = sendToAdmin({
     ...adminNewReservationTemplate({
       reference: booking.reference,
       guestName: booking.guest.name,
@@ -195,8 +223,7 @@ export async function notifyPaymentRecorded(
 }
 
 export async function notifyAdminNewMessage(input: ContactMessageInput): Promise<EmailSendResult> {
-  return sendEmail({
-    subject: `New contact message · ${input.subject}`,
+  return sendToAdmin({
     ...adminNewMessageTemplate({
       name: input.name,
       email: input.email,

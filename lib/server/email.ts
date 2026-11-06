@@ -134,6 +134,11 @@ export function isEmailConfigured(): boolean {
   return readConfig() !== null;
 }
 
+/** Inbox that receives operational alerts, or null while SMTP is not configured. */
+export function getAdminNotificationAddress(): string | null {
+  return readConfig()?.adminAddress ?? null;
+}
+
 function escapeHeader(value: string): string {
   if (/[\r\n]/.test(value)) {
     throw new Error("Email header contains a line break.");

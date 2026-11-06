@@ -119,6 +119,21 @@ npm run start
 
 ---
 
+### Email and password reset
+
+Email is optional. With `SMTP_HOST` unset the app still works and every skipped message is logged. Set the `SMTP_*`, `EMAIL_FROM`, `ADMIN_NOTIFICATION_EMAIL` and `NEXT_PUBLIC_SITE_URL` values from `.env.example` to enable it.
+
+| Event | Sent to |
+| --- | --- |
+| New account | Customer welcome + admin alert |
+| Booking created | Guest confirmation + admin alert |
+| Reservation confirmed / reopened / cancelled | Guest |
+| Payment recorded (completed) | Guest receipt with outstanding balance |
+| Contact form message | Admin inbox |
+| Password reset requested / completed | Account owner |
+
+Emails are sent after the response, so a mail outage never blocks a booking or payment. Customers reset passwords at `/forgot-password`; staff use `/forgot-password?portal=admin`. Links are single-use and expire after 30 minutes.
+
 ## 5. Database
 
 ### Schema

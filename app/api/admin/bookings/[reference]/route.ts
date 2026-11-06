@@ -3,6 +3,7 @@ import { getDetailedBookingByReference, updateReservationStatus } from "@/lib/se
 import { getClientIp, requireApiRole } from "@/lib/server/auth";
 import { ApiError } from "@/lib/server/errors";
 import { assertSameOrigin, errorResponse, jsonOk, readJson } from "@/lib/server/http";
+import { notifyReservationStatus, runInBackground } from "@/lib/server/notifications";
 import { parseReferenceParam, parseReservationStatusBody } from "@/lib/server/validation";
 
 /** GET /api/admin/bookings/[reference] — full reservation details, payments, notes & replies. */
@@ -40,6 +41,7 @@ export async function PATCH(
     const ip = getClientIp(request);
 
     await updateReservationStatus(cleanRef, status, user, ip);
+    runInBackground(() => notifyReservationStatus(cleanRef, status));
     return jsonOk({ ok: true, status, reference: cleanRef });
   } catch (error) {
     return errorResponse(error);
