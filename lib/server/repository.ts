@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { Pool, PoolConnection } from "mysql2/promise";
 import { getPool } from "@/lib/db";
@@ -615,13 +615,15 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRec
       serviceLines.reduce((sum, line) => sum + line.amount, 0),
     );
     const total = round2(roomTotal + servicesTotal);
+    const accessToken = randomBytes(24).toString("hex");
+    const accessTokenHash = createHash("sha256").update(accessToken).digest("hex");
     const reference = generateBookingReference();
 
     const [insertResult] = await connection.query<ResultSetHeader>(
       `INSERT INTO bookings
         (reference, user_id, room_id, check_in, check_out, guests, guest_name, guest_email,
-         guest_phone, requests, nights, room_total, services_total, total, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+         guest_phone, requests, nights, room_total, services_total, total, status, access_token_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         reference,
         data.userId,
@@ -637,6 +639,7 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRec
         roomTotal,
         servicesTotal,
         total,
+        accessTokenHash,
       ],
     );
 
@@ -690,7 +693,31 @@ export async function getBookingByReference(
     [Number(row.id)],
   );
 
-  return mapBooking(row, serviceRows);
+  const [replyRows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, booking_id AS bookingId, sender_type AS senderType, user_id AS userId,
+            sender_name AS senderName, sender_email AS senderEmail, message,
+            is_read AS isRead, read_at AS readAt, created_at AS createdAt
+       FROM admin_replies
+      WHERE booking_id = ?
+      ORDER BY created_at ASC`,
+    [Number(row.id)],
+  );
+
+  const bookingRecord = mapBooking(row, serviceRows);
+  bookingRecord.replies = replyRows.map((r) => ({
+    id: Number(r.id),
+    bookingId: r.bookingId,
+    senderType: r.senderType,
+    userId: r.userId,
+    senderName: r.senderName,
+    senderEmail: r.senderEmail,
+    message: r.message,
+    isRead: Boolean(r.isRead),
+    readAt: r.readAt,
+    createdAt: r.createdAt,
+  }));
+
+  return bookingRecord;
 }
 
 export async function listBookings(limit = 50): Promise<BookingRecord[]> {

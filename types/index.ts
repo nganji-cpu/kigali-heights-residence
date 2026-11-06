@@ -199,6 +199,7 @@ export interface BookingRecord {
   createdAt: string;
   confirmedAt: string | null;
   cancelledAt: string | null;
+  replies?: AdminReplyRecord[];
 }
 
 /** Unfinished reservation, stored in MySQL and owned by one customer. */
@@ -342,4 +343,97 @@ export interface ApiErrorBody {
     /** Optional per-field messages, keyed by form field name. */
     fields?: Record<string, string>;
   };
+}
+
+
+/* ------------------------------------------------------------------------- */
+/* Administration, Communication & Activity Logging                           */
+/* ------------------------------------------------------------------------- */
+
+export type ContactMessageStatus = "unread" | "read" | "handled" | "archived";
+
+export interface ContactMessageRecord {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: ContactMessageStatus;
+  readAt: string | null;
+  handledAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  replies?: AdminReplyRecord[];
+  notes?: AdminNoteRecord[];
+}
+
+export interface AdminActivityLogRecord {
+  id: number;
+  userId: number;
+  userName: string;
+  userRole: UserRole;
+  action: string;
+  entityType: string;
+  entityId: string;
+  details: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export interface AdminNoteRecord {
+  id: number;
+  userId: number;
+  userName: string;
+  bookingId?: number | null;
+  contactMessageId?: number | null;
+  clientUserId?: number | null;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminReplyRecord {
+  id: number;
+  contactMessageId?: number | null;
+  bookingId?: number | null;
+  senderType: "customer" | "admin" | "staff";
+  userId?: number | null;
+  senderName: string;
+  senderEmail: string;
+  message: string;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminServiceRequestSummary {
+  id: number;
+  bookingId: number;
+  bookingReference: string;
+  guestName: string;
+  guestEmail: string;
+  serviceId: number;
+  serviceSlug: string;
+  serviceName: string;
+  serviceCategory: ServiceCategory;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  status: BookingServiceStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClientSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  status: UserStatus;
+  createdAt: string;
+  totalReservations: number;
+  activeReservations: number;
+  latestReservationDate: string | null;
+  totalSpent: number;
 }

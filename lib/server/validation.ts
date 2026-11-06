@@ -697,3 +697,142 @@ export function parseIdParam(value: string): number {
   }
   return id;
 }
+
+
+/* ------------------------------------------------------------------------- */
+/* Contact Messages, Communication & Service Request Validations              */
+/* ------------------------------------------------------------------------- */
+
+export const CONTACT_MESSAGE_STATUSES = ["unread", "read", "handled", "archived"] as const;
+export type ContactMessageStatusInput = (typeof CONTACT_MESSAGE_STATUSES)[number];
+
+export function parseContactMessageStatusBody(body: unknown): ContactMessageStatusInput {
+  const input = asRecord(body);
+  const status = readString(input.status).trim();
+  if (!CONTACT_MESSAGE_STATUSES.includes(status as ContactMessageStatusInput)) {
+    throwValidation(
+      { status: "Choose unread, read, handled or archived." },
+      "Please choose a valid message status.",
+    );
+  }
+  return status as ContactMessageStatusInput;
+}
+
+export interface AdminReplyInput {
+  message: string;
+}
+
+export function parseAdminReplyBody(body: unknown): AdminReplyInput {
+  const input = asRecord(body);
+  const message = readString(input.message).trim();
+  if (!message) {
+    throwValidation({ message: "Please enter a reply message." }, "Reply message cannot be empty.");
+  }
+  if (message.length < 2) {
+    throwValidation({ message: "Reply message is too short." }, "Please provide more details.");
+  }
+  if (message.length > 5000) {
+    throwValidation({ message: "Reply message must be under 5000 characters." }, "Message is too long.");
+  }
+  return { message };
+}
+
+export interface AdminNoteInput {
+  note: string;
+  bookingReference?: string;
+  contactMessageId?: number;
+  clientUserId?: number;
+}
+
+export function parseAdminNoteBody(body: unknown): AdminNoteInput {
+  const input = asRecord(body);
+  const note = readString(input.note).trim();
+  if (!note) {
+    throwValidation({ note: "Please enter a note." }, "Note cannot be empty.");
+  }
+  if (note.length > 5000) {
+    throwValidation({ note: "Note must be under 5000 characters." }, "Note is too long.");
+  }
+
+  const bookingReference = readString(input.bookingReference).trim().toUpperCase() || undefined;
+  const rawMsgId = input.contactMessageId;
+  const contactMessageId = typeof rawMsgId === "number" ? rawMsgId : undefined;
+  const rawClientId = input.clientUserId;
+  const clientUserId = typeof rawClientId === "number" ? rawClientId : undefined;
+
+  return { note, bookingReference, contactMessageId, clientUserId };
+}
+
+export const SERVICE_REQUEST_STATUSES = ["requested", "confirmed", "cancelled"] as const;
+export type ServiceRequestStatusInput = (typeof SERVICE_REQUEST_STATUSES)[number];
+
+export interface ServiceRequestUpdateInput {
+  status: ServiceRequestStatusInput;
+  notes?: string;
+}
+
+export function parseServiceRequestUpdateBody(body: unknown): ServiceRequestUpdateInput {
+  const input = asRecord(body);
+  const status = readString(input.status).trim();
+  if (!SERVICE_REQUEST_STATUSES.includes(status as ServiceRequestStatusInput)) {
+    throwValidation(
+      { status: "Choose requested, confirmed or cancelled." },
+      "Please choose a valid service request status.",
+    );
+  }
+  const notes = readString(input.notes).trim() || undefined;
+  return { status: status as ServiceRequestStatusInput, notes };
+}
+
+/* ------------------------------------------------------------------------- */
+/* Password reset                                                            */
+/* ------------------------------------------------------------------------- */
+
+export type ResetPortal = "customer" | "admin";
+
+export interface ForgotPasswordInput {
+  email: string;
+  portal: ResetPortal;
+}
+
+/** Validates POST /api/auth/forgot-password. */
+export function parseForgotPasswordBody(body: unknown): ForgotPasswordInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+  const email = readObjectField(input, "email").toLowerCase();
+  const portal = readString(input.portal).trim() === "admin" ? "admin" : "customer";
+
+  validateEmail(email, fields);
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please enter a valid email address.");
+  }
+
+  return { email, portal };
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  password: string;
+}
+
+/** Validates POST /api/auth/reset-password. */
+export function parseResetPasswordBody(body: unknown): ResetPasswordInput {
+  const input = asRecord(body);
+  const fields: Record<string, string> = {};
+  const token = readString(input.token).trim();
+  const password = readString(input.password);
+
+  if (!token) {
+    fields.token = "The reset link is missing its token.";
+  } else if (!/^[A-Za-z0-9_-]{20,200}$/.test(token)) {
+    fields.token = "That reset link is not valid.";
+  }
+  validatePassword(password, fields);
+
+  if (Object.keys(fields).length > 0) {
+    throwValidation(fields, "Please choose a valid new password.");
+  }
+
+  return { token, password };
+}

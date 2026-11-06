@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { listAdminReservations } from "@/lib/server/admin";
+import { requireAdminPage } from "@/lib/server/auth";
 import { AdminPageHeader, EmptyState, StatusBadge } from "@/components/admin/admin-ui";
 import { ReservationStatusControl } from "@/components/admin/reservation-status-control";
 import { formatDateLong, formatUSD } from "@/lib/utils";
@@ -17,6 +18,7 @@ export default async function AdminReservationsPage({
   searchParams,
 }: PageProps<"/admin/reservations">) {
   await connection();
+  await requireAdminPage();
   const params = await searchParams;
   const rawStatus = firstValue(params.status);
   const status = statuses.includes(rawStatus as (typeof statuses)[number])

@@ -1,10 +1,10 @@
 import { connection } from "next/server";
-import { requirePageRole } from "@/lib/server/auth";
+import { requireAdminPage } from "@/lib/server/auth";
 
 export const instant = false;
 
 export default async function AdminStaffLayout({ children }: LayoutProps<"/admin/staff">) {
   await connection();
-  await requirePageRole(["admin"]);
+  await requireAdminPage(["admin"]);
   return <>{children}</>;
 }

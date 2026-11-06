@@ -63,23 +63,38 @@ export interface UserWithPassword {
 }
 
 export async function findUserForLogin(email: string): Promise<UserWithPassword | null> {
-  const pool = getPool();
-  const [rows] = await pool.query<UserRow[]>(`${USER_SELECT} WHERE email = ? LIMIT 1`, [email]);
-  const row = rows[0];
-  if (!row) return null;
-  return { user: mapUser(row), passwordHash: row.passwordHash };
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<UserRow[]>(`${USER_SELECT} WHERE email = ? LIMIT 1`, [email]);
+    const row = rows[0];
+    if (!row) return null;
+    return { user: mapUser(row), passwordHash: row.passwordHash };
+  } catch (error) {
+    console.warn("Database unavailable during findUserForLogin:", error);
+    return null;
+  }
 }
 
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
-  const pool = getPool();
-  const [rows] = await pool.query<UserRow[]>(`${USER_SELECT} WHERE email = ? LIMIT 1`, [email]);
-  return rows[0] ? mapUser(rows[0]) : null;
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<UserRow[]>(`${USER_SELECT} WHERE email = ? LIMIT 1`, [email]);
+    return rows[0] ? mapUser(rows[0]) : null;
+  } catch (error) {
+    console.warn("Database unavailable during findUserByEmail:", error);
+    return null;
+  }
 }
 
 export async function findUserById(id: number): Promise<AuthUser | null> {
-  const pool = getPool();
-  const [rows] = await pool.query<UserRow[]>(`${USER_SELECT} WHERE id = ? LIMIT 1`, [id]);
-  return rows[0] ? mapUser(rows[0]) : null;
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<UserRow[]>(`${USER_SELECT} WHERE id = ? LIMIT 1`, [id]);
+    return rows[0] ? mapUser(rows[0]) : null;
+  } catch (error) {
+    console.warn("Database unavailable during findUserById:", error);
+    return null;
+  }
 }
 
 export interface CreateUserInput {
@@ -155,53 +170,63 @@ export async function updateUserPasswordHash(userId: number, passwordHash: strin
 }
 
 export async function listCustomers(): Promise<AdminCustomerSummary[]> {
-  const pool = getPool();
-  const [rows] = await pool.query<CustomerRow[]>(
-    `SELECT
-       u.id,
-       u.full_name AS fullName,
-       u.email,
-       u.phone,
-       u.status,
-       u.created_at AS createdAt,
-       COUNT(b.id) AS reservationCount,
-       COALESCE(SUM(
-         CASE WHEN b.status IN ('pending', 'confirmed') THEN b.total ELSE 0 END
-       ), 0) AS totalSpent
-     FROM users u
-     LEFT JOIN bookings b ON b.user_id = u.id
-     WHERE u.role = 'customer'
-     GROUP BY u.id
-     ORDER BY u.created_at DESC`,
-  );
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<CustomerRow[]>(
+      `SELECT
+         u.id,
+         u.full_name AS fullName,
+         u.email,
+         u.phone,
+         u.status,
+         u.created_at AS createdAt,
+         COUNT(b.id) AS reservationCount,
+         COALESCE(SUM(
+           CASE WHEN b.status IN ('pending', 'confirmed') THEN b.total ELSE 0 END
+         ), 0) AS totalSpent
+       FROM users u
+       LEFT JOIN bookings b ON b.user_id = u.id
+       WHERE u.role = 'customer'
+       GROUP BY u.id
+       ORDER BY u.created_at DESC`,
+    );
 
-  return rows.map((row) => ({
-    id: Number(row.id),
-    fullName: row.fullName,
-    email: row.email,
-    phone: row.phone,
-    status: row.status,
-    createdAt: row.createdAt,
-    reservationCount: Number(row.reservationCount),
-    totalSpent: Number(row.totalSpent),
-  }));
+    return rows.map((row) => ({
+      id: Number(row.id),
+      fullName: row.fullName,
+      email: row.email,
+      phone: row.phone,
+      status: row.status,
+      createdAt: row.createdAt,
+      reservationCount: Number(row.reservationCount),
+      totalSpent: Number(row.totalSpent),
+    }));
+  } catch (error) {
+    console.warn("Database unavailable during listCustomers:", error);
+    return [];
+  }
 }
 
 export async function listStaff(): Promise<AdminStaffSummary[]> {
-  const pool = getPool();
-  const [rows] = await pool.query<UserRow[]>(
-    `${USER_SELECT} WHERE role IN ('admin', 'staff') ORDER BY role ASC, created_at DESC`,
-  );
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<UserRow[]>(
+      `${USER_SELECT} WHERE role IN ('admin', 'staff') ORDER BY role ASC, created_at DESC`,
+    );
 
-  return rows.map((row) => ({
-    id: Number(row.id),
-    fullName: row.fullName,
-    email: row.email,
-    phone: row.phone,
-    role: row.role,
-    status: row.status,
-    createdAt: row.createdAt,
-  }));
+    return rows.map((row) => ({
+      id: Number(row.id),
+      fullName: row.fullName,
+      email: row.email,
+      phone: row.phone,
+      role: row.role,
+      status: row.status,
+      createdAt: row.createdAt,
+    }));
+  } catch (error) {
+    console.warn("Database unavailable during listStaff:", error);
+    return [];
+  }
 }
 
 export async function createStaffUser(input: Omit<CreateUserInput, "role">): Promise<AuthUser> {
@@ -220,13 +245,17 @@ export async function updateUserStatus(userId: number, status: UserStatus): Prom
 
 /** Deletes every session for a user except the one identified by `keepTokenHash`. */
 export async function deleteUserSessions(userId: number, keepTokenHash?: string): Promise<void> {
-  const pool = getPool();
-  if (keepTokenHash) {
-    await pool.query("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", [
-      userId,
-      keepTokenHash,
-    ]);
-  } else {
-    await pool.query("DELETE FROM sessions WHERE user_id = ?", [userId]);
+  try {
+    const pool = getPool();
+    if (keepTokenHash) {
+      await pool.query("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", [
+        userId,
+        keepTokenHash,
+      ]);
+    } else {
+      await pool.query("DELETE FROM sessions WHERE user_id = ?", [userId]);
+    }
+  } catch (error) {
+    console.warn("Database unavailable during deleteUserSessions:", error);
   }
 }
