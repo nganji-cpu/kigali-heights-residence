@@ -16,9 +16,10 @@ import {
   passwordChangedTemplate,
   passwordResetTemplate,
   paymentReceiptTemplate,
+  staffReplyTemplate,
   welcomeTemplate,
 } from "./email-templates";
-import { listPaymentsForBooking } from "./admin";
+import { getAdminContactMessage, listPaymentsForBooking } from "./admin";
 import { getBookingByReference } from "./repository";
 import type { ContactMessageInput } from "./validation";
 
@@ -230,6 +231,52 @@ export async function notifyAdminNewMessage(input: ContactMessageInput): Promise
       subject: input.subject,
       message: input.message,
       adminUrl: siteUrl("/admin/messages"),
+    }),
+  });
+}
+
+/** Emails the guest a staff reply recorded against their reservation. */
+export async function notifyBookingReply(input: {
+  reference: string;
+  message: string;
+  staffName: string;
+}): Promise<EmailSendResult | null> {
+  const booking = await getBookingByReference(input.reference);
+  if (!booking) return null;
+
+  return sendEmail({
+    to: booking.guest.email,
+    replyTo: getAdminNotificationAddress() ?? undefined,
+    ...staffReplyTemplate({
+      recipientName: booking.guest.name,
+      staffName: input.staffName,
+      message: input.message,
+      topic: `Reservation ${booking.reference}`,
+      cta: {
+        label: "View your reservation",
+        url: siteUrl(`/dashboard/reservations/${booking.reference}`),
+      },
+    }),
+  });
+}
+
+/** Emails the sender of a contact-form message the staff reply to it. */
+export async function notifyContactMessageReply(input: {
+  messageId: number;
+  message: string;
+  staffName: string;
+}): Promise<EmailSendResult | null> {
+  const original = await getAdminContactMessage(input.messageId);
+  if (!original) return null;
+
+  return sendEmail({
+    to: original.email,
+    replyTo: getAdminNotificationAddress() ?? undefined,
+    ...staffReplyTemplate({
+      recipientName: original.name,
+      staffName: input.staffName,
+      message: input.message,
+      topic: `Re: ${original.subject}`,
     }),
   });
 }

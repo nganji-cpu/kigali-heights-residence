@@ -4,6 +4,7 @@ import { getClientIp, requireApiRole } from "@/lib/server/auth";
 import { getPool } from "@/lib/db";
 import { ApiError } from "@/lib/server/errors";
 import { assertSameOrigin, errorResponse, jsonOk, readJson } from "@/lib/server/http";
+import { notifyBookingReply, runInBackground } from "@/lib/server/notifications";
 import { parseAdminReplyBody, parseReferenceParam } from "@/lib/server/validation";
 import type { RowDataPacket } from "mysql2";
 
@@ -32,6 +33,9 @@ export async function POST(
     }
 
     const reply = await addBookingReply(Number(booking.id), input.message, user, ip);
+    runInBackground(() =>
+      notifyBookingReply({ reference: cleanRef, message: input.message, staffName: user.fullName }),
+    );
     return jsonOk({ reply }, 201);
   } catch (error) {
     return errorResponse(error);

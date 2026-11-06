@@ -584,3 +584,45 @@ export function adminNewMessageTemplate(input: {
     }),
   };
 }
+
+/**
+ * Staff reply to a guest. Used for both reservation replies and contact-form
+ * replies; `topic` names what the reply is about. The staff text is escaped and
+ * its line breaks are preserved.
+ */
+export function staffReplyTemplate(input: {
+  recipientName: string;
+  staffName: string;
+  message: string;
+  /** Short label for the conversation, e.g. "Reservation KHR-AB12CD34". */
+  topic: string;
+  cta?: { label: string; url: string };
+}): EmailTemplate {
+  const intro = `Hello ${input.recipientName}, ${input.staffName} from the residence team replied to you.`;
+  const body = `<p style="margin:0 0 6px;color:${BRAND.muted};font-size:13px">${escapeHtml(input.topic)}</p>
+    <p style="margin:0;white-space:pre-wrap">${escapeHtml(input.message)}</p>`;
+
+  return {
+    subject: `Reply from the residence team · ${input.topic}`,
+    text: [
+      intro,
+      "",
+      input.topic,
+      "",
+      input.message,
+      "",
+      ...(input.cta ? [`${input.cta.label}: ${input.cta.url}`, ""] : []),
+      "Reply to this email to continue the conversation.",
+      "",
+      SITE_NAME,
+    ].join("\n"),
+    html: layout({
+      title: "A reply from the residence team.",
+      preheader: input.topic,
+      intro,
+      bodyHtml: body,
+      cta: input.cta,
+      footnote: "Reply to this email to continue the conversation.",
+    }),
+  };
+}
