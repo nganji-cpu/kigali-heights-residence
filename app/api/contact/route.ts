@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { errorResponse, jsonOk, readJson } from "@/lib/server/http";
+import { notifyAdminNewMessage, runInBackground } from "@/lib/server/notifications";
 import { createContactMessage } from "@/lib/server/repository";
 import { parseContactBody } from "@/lib/server/validation";
 
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await readJson(request);
     const input = parseContactBody(body);
     const message = await createContactMessage(input);
+    runInBackground(() => notifyAdminNewMessage(input));
     return jsonOk({ message }, 201);
   } catch (error) {
     return errorResponse(error);

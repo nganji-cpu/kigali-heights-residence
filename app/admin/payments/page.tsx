@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { listAdminReservations, listPayments } from "@/lib/server/admin";
+import { requireAdminPage } from "@/lib/server/auth";
 import { AdminPageHeader, EmptyState, StatusBadge } from "@/components/admin/admin-ui";
 import { PaymentForm } from "@/components/admin/payment-form";
 import { formatUSD } from "@/lib/utils";
@@ -8,6 +9,7 @@ export const instant = false;
 
 export default async function AdminPaymentsPage() {
   await connection();
+  await requireAdminPage();
   const [payments, reservations] = await Promise.all([
     listPayments(100),
     listAdminReservations({ limit: 100 }),

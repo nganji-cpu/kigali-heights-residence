@@ -9,6 +9,7 @@ import {
   listBookings,
   listBookingsForUser,
 } from "@/lib/server/repository";
+import { notifyBookingReceived, runInBackground } from "@/lib/server/notifications";
 import { parseBookingBody, parseReferenceParam } from "@/lib/server/validation";
 import type { BookingRecord, BookingSummary } from "@/types";
 
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       userId: user.id,
     });
+    runInBackground(() => notifyBookingReceived(booking));
     return jsonOk({ booking }, 201);
   } catch (error) {
     return errorResponse(error);

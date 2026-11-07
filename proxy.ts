@@ -14,10 +14,20 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE_NAME);
 
-  const needsAuth = PROTECTED.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-  const needsAdmin = ADMIN_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  // Allow direct access to admin login page
+  if (pathname === "/admin/login") {
+    return NextResponse.next();
+  }
 
-  if ((needsAuth || needsAdmin) && !hasSession) {
+  const needsAdmin = ADMIN_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  if (needsAdmin && !hasSession) {
+    const adminLoginUrl = new URL("/admin/login", request.url);
+    adminLoginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(adminLoginUrl);
+  }
+
+  const needsAuth = PROTECTED.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  if (needsAuth && !hasSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
@@ -27,5 +37,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/book", "/book/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/book", "/book/:path*", "/admin", "/admin/:path*"],
 };

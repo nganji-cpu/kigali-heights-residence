@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { listCustomers } from "@/lib/server/accounts";
+import { requireAdminPage } from "@/lib/server/auth";
 import { AdminPageHeader, EmptyState, StatusBadge } from "@/components/admin/admin-ui";
 import { formatUSD } from "@/lib/utils";
 
@@ -7,6 +8,7 @@ export const instant = false;
 
 export default async function AdminCustomersPage() {
   await connection();
+  await requireAdminPage();
   const customers = await listCustomers();
 
   return (

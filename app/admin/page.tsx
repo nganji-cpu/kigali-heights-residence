@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { getAdminStats, listAdminReservations } from "@/lib/server/admin";
-import { getSessionUser } from "@/lib/server/auth";
+import { requireAdminPage } from "@/lib/server/auth";
 import { AdminPageHeader, StatCard, StatusBadge } from "@/components/admin/admin-ui";
 import { formatDateLong, formatUSD } from "@/lib/utils";
 
@@ -9,8 +9,7 @@ export const instant = false;
 
 export default async function AdminOverviewPage() {
   await connection();
-  const user = await getSessionUser();
-  if (!user) return null;
+  const user = await requireAdminPage();
 
   const [stats, reservations] = await Promise.all([
     getAdminStats(),

@@ -179,6 +179,30 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
+-- Password reset requests. Only a SHA-256 hash of the emailed token is stored.
+-- Every request is recorded (including unknown email addresses) so the
+-- endpoint can be rate-limited without revealing whether an account exists.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NULL,
+  email VARCHAR(190) NOT NULL,
+  token_hash CHAR(64) NULL,
+  expires_at DATETIME NULL,
+  used_at DATETIME NULL,
+  ip_hash CHAR(64) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_password_reset_token (token_hash),
+  KEY idx_password_reset_email (email, created_at),
+  KEY idx_password_reset_ip (ip_hash, created_at),
+  KEY idx_password_reset_user (user_id, used_at),
+  CONSTRAINT fk_password_reset_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
 -- Bookings — totals are always calculated by the server.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS bookings (
@@ -201,6 +225,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   status ENUM('draft', 'pending', 'confirmed', 'cancelled') NOT NULL DEFAULT 'pending',
   confirmed_at DATETIME NULL,
   cancelled_at DATETIME NULL,
+  access_token_hash CHAR(64) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -208,6 +233,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   KEY idx_bookings_room_dates (room_id, check_in, check_out, status),
   KEY idx_bookings_user (user_id, created_at),
   KEY idx_bookings_created (created_at),
+  KEY idx_bookings_token_hash (access_token_hash),
   CONSTRAINT fk_bookings_room
     FOREIGN KEY (room_id) REFERENCES rooms (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -231,7 +257,9 @@ CREATE TABLE IF NOT EXISTS booking_services (
   unit_price DECIMAL(10, 2) NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
   status ENUM('confirmed', 'requested', 'cancelled') NOT NULL DEFAULT 'confirmed',
+  notes TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_booking_services (booking_id, service_id),
   KEY idx_booking_services_service (service_id),
@@ -327,9 +355,96 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   email VARCHAR(190) NOT NULL,
   subject VARCHAR(60) NOT NULL,
   message TEXT NOT NULL,
+  status ENUM('unread', 'read', 'handled', 'archived') NOT NULL DEFAULT 'unread',
+  read_at DATETIME NULL,
+  handled_at DATETIME NULL,
+  archived_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_contact_messages_created (created_at)
+  KEY idx_contact_messages_created (created_at),
+  KEY idx_contact_messages_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Administrator Activity Logs — audit trail for administrative actions
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admin_activity_logs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  action VARCHAR(80) NOT NULL,
+  entity_type VARCHAR(50) NOT NULL,
+  entity_id VARCHAR(80) NOT NULL,
+  details JSON NULL,
+  ip_address VARCHAR(45) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_admin_logs_user (user_id),
+  KEY idx_admin_logs_entity (entity_type, entity_id),
+  KEY idx_admin_logs_created (created_at),
+  CONSTRAINT fk_admin_logs_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Administrator Notes — internal notes on bookings, messages and clients
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admin_notes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  booking_id INT UNSIGNED NULL,
+  contact_message_id INT UNSIGNED NULL,
+  client_user_id INT UNSIGNED NULL,
+  note TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_admin_notes_user (user_id),
+  KEY idx_admin_notes_booking (booking_id),
+  KEY idx_admin_notes_message (contact_message_id),
+  KEY idx_admin_notes_client (client_user_id),
+  CONSTRAINT fk_admin_notes_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_admin_notes_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_admin_notes_message
+    FOREIGN KEY (contact_message_id) REFERENCES contact_messages (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_admin_notes_client
+    FOREIGN KEY (client_user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Administrator Replies & Communication History
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admin_replies (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  contact_message_id INT UNSIGNED NULL,
+  booking_id INT UNSIGNED NULL,
+  sender_type ENUM('customer', 'admin', 'staff') NOT NULL,
+  user_id INT UNSIGNED NULL,
+  sender_name VARCHAR(120) NOT NULL,
+  sender_email VARCHAR(190) NOT NULL,
+  message TEXT NOT NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  read_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_admin_replies_message (contact_message_id),
+  KEY idx_admin_replies_booking (booking_id),
+  KEY idx_admin_replies_user (user_id),
+  CONSTRAINT fk_admin_replies_message
+    FOREIGN KEY (contact_message_id) REFERENCES contact_messages (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_admin_replies_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_admin_replies_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===========================================================================

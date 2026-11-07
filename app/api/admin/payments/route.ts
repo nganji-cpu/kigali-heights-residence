@@ -2,6 +2,7 @@ import { connection, type NextRequest } from "next/server";
 import { listPayments, recordPayment } from "@/lib/server/admin";
 import { requireApiRole } from "@/lib/server/auth";
 import { assertSameOrigin, errorResponse, jsonOk, readJson } from "@/lib/server/http";
+import { notifyPaymentRecorded, runInBackground } from "@/lib/server/notifications";
 import { parsePaymentBody } from "@/lib/server/validation";
 
 /** GET /api/admin/payments — recent payments recorded by the team. */
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     const user = await requireApiRole(["admin", "staff"]);
     const input = parsePaymentBody(await readJson(request));
     const payment = await recordPayment(input, user.id);
+    runInBackground(() => notifyPaymentRecorded(payment));
     return jsonOk({ payment }, 201);
   } catch (error) {
     return errorResponse(error);

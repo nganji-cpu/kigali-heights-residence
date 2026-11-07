@@ -101,6 +101,15 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         </Field>
       </div>
 
+      <div className="-mt-2 text-[0.8rem]">
+        <Link
+          href="/forgot-password"
+          className="text-charcoal/70 underline-offset-4 hover:text-bronze hover:underline"
+        >
+          Forgot your password?
+        </Link>
+      </div>
+
       <Button type="submit" size="lg" loading={submitting} className="w-full">
         {submitting ? "Signing in" : "Sign in"}
       </Button>

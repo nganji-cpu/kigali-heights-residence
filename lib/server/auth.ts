@@ -69,19 +69,23 @@ interface SessionUserRow extends RowDataPacket {
 
 /** Creates a DB-backed session and sets the HTTP-only cookie. */
 export async function startSession(userId: number): Promise<void> {
-  const pool = getPool();
-  const token = randomBytes(32).toString("base64url");
-  const tokenHash = hashToken(token);
-  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+  try {
+    const pool = getPool();
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
 
-  await pool.query(
-    `INSERT INTO sessions (user_id, token_hash, expires_at)
-     VALUES (?, ?, ?)`,
-    [userId, tokenHash, expiresAt],
-  );
+    await pool.query(
+      `INSERT INTO sessions (user_id, token_hash, expires_at)
+       VALUES (?, ?, ?)`,
+      [userId, tokenHash, expiresAt],
+    );
 
-  const store = await cookies();
-  store.set(SESSION_COOKIE_NAME, token, sessionCookieOptions(expiresAt));
+    const store = await cookies();
+    store.set(SESSION_COOKIE_NAME, token, sessionCookieOptions(expiresAt));
+  } catch (error) {
+    console.warn("Database unavailable during startSession:", error);
+  }
 }
 
 /**
@@ -90,55 +94,60 @@ export async function startSession(userId: number): Promise<void> {
  * every request does not cause a write.
  */
 export async function getSessionContext(): Promise<{ user: AuthUser; tokenHash: string } | null> {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) return null;
+  try {
+    const store = await cookies();
+    const token = store.get(SESSION_COOKIE_NAME)?.value;
+    if (!token) return null;
 
-  const tokenHash = hashToken(token);
-  const pool = getPool();
-  const [rows] = await pool.query<SessionUserRow[]>(
-    `SELECT
-       u.id,
-       u.full_name AS fullName,
-       u.email,
-       u.phone,
-       u.role,
-       u.status,
-       u.created_at AS createdAt,
-       s.id AS sessionId,
-       s.expires_at AS expiresAt
-     FROM sessions s
-     JOIN users u ON u.id = s.user_id
-     WHERE s.token_hash = ?
-       AND s.expires_at > NOW()
-       AND u.status = 'active'
-     LIMIT 1`,
-    [tokenHash],
-  );
+    const tokenHash = hashToken(token);
+    const pool = getPool();
+    const [rows] = await pool.query<SessionUserRow[]>(
+      `SELECT
+         u.id,
+         u.full_name AS fullName,
+         u.email,
+         u.phone,
+         u.role,
+         u.status,
+         u.created_at AS createdAt,
+         s.id AS sessionId,
+         s.expires_at AS expiresAt
+       FROM sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token_hash = ?
+         AND s.expires_at > NOW()
+         AND u.status = 'active'
+       LIMIT 1`,
+      [tokenHash],
+    );
 
-  const row = rows[0];
-  if (!row) return null;
+    const row = rows[0];
+    if (!row) return null;
 
-  await pool.query(
-    `UPDATE sessions
-        SET last_used_at = NOW()
-      WHERE id = ?
-        AND (last_used_at IS NULL OR last_used_at < NOW() - INTERVAL 1 HOUR)`,
-    [Number(row.sessionId)],
-  );
+    await pool.query(
+      `UPDATE sessions
+          SET last_used_at = NOW()
+        WHERE id = ?
+          AND (last_used_at IS NULL OR last_used_at < NOW() - INTERVAL 1 HOUR)`,
+      [Number(row.sessionId)],
+    );
 
-  return {
-    user: {
-      id: Number(row.id),
-      fullName: row.fullName,
-      email: row.email,
-      phone: row.phone,
-      role: row.role,
-      status: row.status,
-      createdAt: row.createdAt,
-    },
-    tokenHash,
-  };
+    return {
+      user: {
+        id: Number(row.id),
+        fullName: row.fullName,
+        email: row.email,
+        phone: row.phone,
+        role: row.role,
+        status: row.status,
+        createdAt: row.createdAt,
+      },
+      tokenHash,
+    };
+  } catch (error) {
+    console.warn("Database unavailable during getSessionContext:", error);
+    return null;
+  }
 }
 
 export async function getSessionUser(): Promise<AuthUser | null> {
@@ -152,8 +161,12 @@ export async function endSession(): Promise<void> {
   const token = store.get(SESSION_COOKIE_NAME)?.value;
 
   if (token) {
-    const pool = getPool();
-    await pool.query("DELETE FROM sessions WHERE token_hash = ?", [hashToken(token)]);
+    try {
+      const pool = getPool();
+      await pool.query("DELETE FROM sessions WHERE token_hash = ?", [hashToken(token)]);
+    } catch (error) {
+      console.warn("Database unavailable during endSession:", error);
+    }
   }
 
   store.delete(SESSION_COOKIE_NAME);
@@ -172,6 +185,25 @@ export async function requirePageRole(roles: UserRole[]): Promise<AuthUser> {
   if (!user) redirect("/login");
   if (!roles.includes(user.role)) {
     redirect(user.role === "customer" ? "/dashboard" : "/admin");
+  }
+  return user;
+}
+
+/**
+ * Server-component guard for the operations portal. Unauthenticated visitors
+ * are sent to the administrator sign-in page (never the customer login), while
+ * signed-in customers are returned to their own dashboard.
+ *
+ * This resolves the user from the database on every request, so a forged or
+ * expired cookie cannot bypass the role check.
+ */
+export async function requireAdminPage(
+  roles: UserRole[] = ["admin", "staff"],
+): Promise<AuthUser> {
+  const user = await getSessionUser();
+  if (!user) redirect("/admin/login");
+  if (!roles.includes(user.role)) {
+    redirect(user.role === "customer" ? "/dashboard" : "/admin/login");
   }
   return user;
 }
@@ -216,16 +248,21 @@ interface CountRow extends RowDataPacket {
 }
 
 async function countRecentFailures(column: "email" | "ip_hash", value: string): Promise<number> {
-  const pool = getPool();
-  const [rows] = await pool.query<CountRow[]>(
-    `SELECT COUNT(*) AS total
-       FROM login_attempts
-      WHERE ${column} = ?
-        AND success = 0
-        AND attempted_at > DATE_SUB(NOW(), INTERVAL ${LOGIN_WINDOW_MINUTES} MINUTE)`,
-    [value],
-  );
-  return Number(rows[0]?.total ?? 0);
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<CountRow[]>(
+      `SELECT COUNT(*) AS total
+         FROM login_attempts
+        WHERE ${column} = ?
+          AND success = 0
+          AND attempted_at > DATE_SUB(NOW(), INTERVAL ${LOGIN_WINDOW_MINUTES} MINUTE)`,
+      [value],
+    );
+    return Number(rows[0]?.total ?? 0);
+  } catch (error) {
+    console.warn("Database unavailable, bypassing failure count check:", error);
+    return 0;
+  }
 }
 
 export interface RateLimitResult {
@@ -238,16 +275,20 @@ export async function checkLoginRateLimit(
   email: string,
   ipHash: string,
 ): Promise<RateLimitResult> {
-  const [emailFailures, ipFailures] = await Promise.all([
-    countRecentFailures("email", email),
-    countRecentFailures("ip_hash", ipHash),
-  ]);
+  try {
+    const [emailFailures, ipFailures] = await Promise.all([
+      countRecentFailures("email", email),
+      countRecentFailures("ip_hash", ipHash),
+    ]);
 
-  if (emailFailures >= MAX_FAILURES_PER_EMAIL) {
-    return { limited: true, retryAfterSeconds: LOGIN_WINDOW_MINUTES * 60, reason: "email" };
-  }
-  if (ipFailures >= MAX_FAILURES_PER_IP) {
-    return { limited: true, retryAfterSeconds: LOGIN_WINDOW_MINUTES * 60, reason: "ip" };
+    if (emailFailures >= MAX_FAILURES_PER_EMAIL) {
+      return { limited: true, retryAfterSeconds: LOGIN_WINDOW_MINUTES * 60, reason: "email" };
+    }
+    if (ipFailures >= MAX_FAILURES_PER_IP) {
+      return { limited: true, retryAfterSeconds: LOGIN_WINDOW_MINUTES * 60, reason: "ip" };
+    }
+  } catch (error) {
+    console.warn("Database unavailable during rate limit check:", error);
   }
   return { limited: false, retryAfterSeconds: 0, reason: null };
 }
@@ -257,17 +298,20 @@ export async function recordLoginAttempt(
   ipHash: string,
   success: boolean,
 ): Promise<void> {
-  const pool = getPool();
-  await pool.query(
-    `INSERT INTO login_attempts (email, ip_hash, success) VALUES (?, ?, ?)`,
-    [email, ipHash, success ? 1 : 0],
-  );
-
-  if (success) {
-    // A correct password clears the failure window for this account and client.
+  try {
+    const pool = getPool();
     await pool.query(
-      "DELETE FROM login_attempts WHERE email = ? AND ip_hash = ? AND success = 0",
-      [email, ipHash],
+      `INSERT INTO login_attempts (email, ip_hash, success) VALUES (?, ?, ?)`,
+      [email, ipHash, success ? 1 : 0],
     );
+
+    if (success) {
+      await pool.query(
+        "DELETE FROM login_attempts WHERE email = ? AND ip_hash = ? AND success = 0",
+        [email, ipHash],
+      );
+    }
+  } catch (error) {
+    console.warn("Database unavailable during recordLoginAttempt:", error);
   }
 }

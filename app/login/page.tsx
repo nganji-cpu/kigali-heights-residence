@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { LoginForm } from "@/components/auth/login-form";
 
@@ -12,10 +13,18 @@ function firstValue(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] : value) ?? "";
 }
 
-export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+async function LoginPageContent({ searchParams }: PageProps) {
   const params = await searchParams;
   const nextPath = firstValue(params.next);
 
+  return <LoginForm nextPath={nextPath} />;
+}
+
+export default function LoginPage({ searchParams }: PageProps) {
   return (
     <AuthLayout
       eyebrow="Your account"
@@ -45,7 +54,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </p>
       }
     >
-      <LoginForm nextPath={nextPath} />
+      <Suspense fallback={<div className="py-4 text-sm text-charcoal/60">Loading sign in...</div>}>
+        <LoginPageContent searchParams={searchParams} />
+      </Suspense>
     </AuthLayout>
   );
 }

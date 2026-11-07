@@ -138,10 +138,22 @@ try {
       "ALTER TABLE bookings ADD COLUMN cancelled_at DATETIME NULL AFTER confirmed_at",
     );
   }
+  if (!(await hasColumn(connection, "bookings", "access_token_hash"))) {
+    console.log("Adding bookings.access_token_hash ...");
+    await connection.query(
+      "ALTER TABLE bookings ADD COLUMN access_token_hash CHAR(64) NULL AFTER cancelled_at",
+    );
+  }
   if (!(await hasIndex(connection, "bookings", "idx_bookings_user"))) {
     console.log("Adding index idx_bookings_user ...");
     await connection.query(
       "ALTER TABLE bookings ADD KEY idx_bookings_user (user_id, created_at)",
+    );
+  }
+  if (!(await hasIndex(connection, "bookings", "idx_bookings_token_hash"))) {
+    console.log("Adding index idx_bookings_token_hash ...");
+    await connection.query(
+      "ALTER TABLE bookings ADD KEY idx_bookings_token_hash (access_token_hash)",
     );
   }
   if (!(await hasConstraint(connection, "bookings", "fk_bookings_user"))) {
@@ -164,13 +176,69 @@ try {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // contact_messages status & timestamps
+  // -------------------------------------------------------------------------
+  if (!(await hasColumn(connection, "contact_messages", "status"))) {
+    console.log("Adding contact_messages.status ...");
+    await connection.query(
+      `ALTER TABLE contact_messages
+         ADD COLUMN status ENUM('unread', 'read', 'handled', 'archived')
+           NOT NULL DEFAULT 'unread' AFTER message`,
+    );
+  }
+  if (!(await hasColumn(connection, "contact_messages", "read_at"))) {
+    console.log("Adding contact_messages.read_at ...");
+    await connection.query(
+      "ALTER TABLE contact_messages ADD COLUMN read_at DATETIME NULL AFTER status",
+    );
+  }
+  if (!(await hasColumn(connection, "contact_messages", "handled_at"))) {
+    console.log("Adding contact_messages.handled_at ...");
+    await connection.query(
+      "ALTER TABLE contact_messages ADD COLUMN handled_at DATETIME NULL AFTER read_at",
+    );
+  }
+  if (!(await hasColumn(connection, "contact_messages", "archived_at"))) {
+    console.log("Adding contact_messages.archived_at ...");
+    await connection.query(
+      "ALTER TABLE contact_messages ADD COLUMN archived_at DATETIME NULL AFTER handled_at",
+    );
+  }
+  if (!(await hasIndex(connection, "contact_messages", "idx_contact_messages_status"))) {
+    console.log("Adding index idx_contact_messages_status ...");
+    await connection.query(
+      "ALTER TABLE contact_messages ADD KEY idx_contact_messages_status (status)",
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // booking_services notes & updated_at
+  // -------------------------------------------------------------------------
+  if (!(await hasColumn(connection, "booking_services", "notes"))) {
+    console.log("Adding booking_services.notes ...");
+    await connection.query(
+      "ALTER TABLE booking_services ADD COLUMN notes TEXT NULL AFTER status",
+    );
+  }
+  if (!(await hasColumn(connection, "booking_services", "updated_at"))) {
+    console.log("Adding booking_services.updated_at ...");
+    await connection.query(
+      "ALTER TABLE booking_services ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at",
+    );
+  }
+
   const [counts] = await connection.query(
     `SELECT
        (SELECT COUNT(*) FROM users) AS users,
        (SELECT COUNT(*) FROM sessions) AS sessions,
        (SELECT COUNT(*) FROM reservation_drafts) AS drafts,
        (SELECT COUNT(*) FROM bookings) AS bookings,
-       (SELECT COUNT(*) FROM payments) AS payments`,
+       (SELECT COUNT(*) FROM payments) AS payments,
+       (SELECT COUNT(*) FROM contact_messages) AS messages,
+       (SELECT COUNT(*) FROM admin_activity_logs) AS logs,
+       (SELECT COUNT(*) FROM admin_notes) AS notes,
+       (SELECT COUNT(*) FROM admin_replies) AS replies`,
   );
 
   console.log("\nMigration complete. Existing records were preserved.");
@@ -181,6 +249,10 @@ try {
       `Reservation drafts: ${counts[0].drafts}`,
       `Bookings: ${counts[0].bookings}`,
       `Payments: ${counts[0].payments}`,
+      `Contact messages: ${counts[0].messages}`,
+      `Admin logs: ${counts[0].logs}`,
+      `Admin notes: ${counts[0].notes}`,
+      `Admin replies: ${counts[0].replies}`,
     ].join("\n"),
   );
   console.log(

@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { getReportSummary } from "@/lib/server/admin";
+import { requireAdminPage } from "@/lib/server/auth";
 import { AdminPageHeader, EmptyState, StatCard, StatusBadge } from "@/components/admin/admin-ui";
 import { formatUSD } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ function monthLabel(period: string): string {
 
 export default async function AdminReportsPage() {
   await connection();
+  await requireAdminPage();
   const report = await getReportSummary();
 
   const maxReservations = Math.max(1, ...report.periodRows.map((row) => row.reservations));

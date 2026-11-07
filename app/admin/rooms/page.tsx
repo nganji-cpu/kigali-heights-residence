@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { connection } from "next/server";
+import { requireAdminPage } from "@/lib/server/auth";
 import { AdminPageHeader, StatusBadge } from "@/components/admin/admin-ui";
 import { RoomStatusControl } from "@/components/admin/room-status-control";
 import { categoryLabels } from "@/data/rooms";
@@ -10,6 +11,7 @@ export const instant = false;
 
 export default async function AdminRoomsPage() {
   await connection();
+  await requireAdminPage();
   const rooms = await listRooms({ includeUnavailable: true });
 
   return (
